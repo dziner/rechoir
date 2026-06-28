@@ -17,6 +17,9 @@
 - [x] done P1 2026-06-28 Google Sheets DB 대상 반영: `GOOGLE_SHEET_ID=1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw`
 - [x] done P1 2026-06-28 플레이리스트 전체 동기화 공통화: YouTube Data API pagination을 `syncPlaylistIntoSheets()`로 분리
 - [x] done P1 2026-06-28 빈 DB 자동 동기화 추가: `songs` 시트가 완전히 비어 있으면 첫 목록 조회에서 기본 플레이리스트 동기화 시도
+- [x] done P1 2026-06-28 영상 제목 날짜 기반 공연일 계산: 수동 공연 기록이 없어도 제목 날짜를 `lastPerformedAt`으로 사용하고 총 공연 최소 1회 처리
+- [x] done P1 2026-06-28 마지막 공연 표시 개선: `27주 전 (2025.04.23)` 형식으로 날짜 포함
+- [x] done P1 2026-06-28 빈 Google Sheet 자동 스키마 생성: 서버가 `songs`/`performances` 시트와 헤더를 생성하도록 보강
 - [x] done P2 2026-06-28 inactive 곡 중복 방지: sync 경로에서 active 필터 없는 `getAllSongs()` 사용
 - [x] done P2 2026-06-28 동기화 설정 문서 업데이트: `YOUTUBE_PLAYLIST_ID`, `AUTO_SYNC_PLAYLIST_ON_EMPTY`, `YOUTUBE_API_KEY` 필요 조건 설명
 - [x] done P1 2026-06-28 서비스 계정 JSON 키 커밋 방지: `.gitignore`에 `docs/*.json`, `*service-account*.json` 추가
@@ -59,3 +62,5 @@
 - 2026-06-28 설정 반영 후 `npm run typecheck`, `npm run build`, `npm audit --json`, `git diff --check` 성공.
 - 2026-06-28 플레이리스트 전체 동기화는 YouTube Data API `playlistItems` 페이지네이션으로 처리. API key가 없으면 전체 목록 보장은 하지 않음.
 - 2026-06-28 `AUTO_SYNC_PLAYLIST_ON_EMPTY` 기본값을 true로 두어 빈 DB 첫 조회 시 자동 import를 시도하도록 변경.
+- 2026-06-28 공연 통계 보정: `calcDerived`가 영상 제목의 날짜를 공연일 후보로 합산하도록 변경. 지원 형식은 `YYYY.MM.DD`, `YYYY-MM-DD`, `YYYY/MM/DD`, `YYYY년 M월 D일`.
+- 2026-06-28 Google Sheets 연동 보강: 비어 있는 새 스프레드시트여도 API가 `songs`/`performances` 시트와 헤더를 자동 생성하도록 변경.

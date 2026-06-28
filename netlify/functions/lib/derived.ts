@@ -17,7 +17,48 @@ export interface SongDerived {
   has2nd: boolean;
 }
 
-export function calcDerived(songId: string, performances: PerformanceLog[]): SongDerived {
+interface DerivedSource {
+  title?: string;
+}
+
+export function extractPerformanceDateFromTitle(title: string): string | null {
+  const patterns = [
+    /\b(20\d{2})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})\b/,
+    /\b(20\d{2})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일?\b/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = title.match(pattern);
+    if (!match) continue;
+    const [, year, month, day] = match;
+    const date = normalizeDate(year, month, day);
+    if (date) return date;
+  }
+
+  return null;
+}
+
+function normalizeDate(year: string, month: string, day: string): string | null {
+  const yyyy = Number(year);
+  const mm = Number(month);
+  const dd = Number(day);
+  const date = new Date(Date.UTC(yyyy, mm - 1, dd));
+  if (
+    date.getUTCFullYear() !== yyyy ||
+    date.getUTCMonth() !== mm - 1 ||
+    date.getUTCDate() !== dd
+  ) {
+    return null;
+  }
+
+  return `${year}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+}
+
+export function calcDerived(
+  songId: string,
+  performances: PerformanceLog[],
+  source?: DerivedSource,
+): SongDerived {
   const songPerfs = performances.filter(p => p.songId === songId);
 
   const byDate = new Map<string, PerformanceLog[]>();
@@ -25,6 +66,10 @@ export function calcDerived(songId: string, performances: PerformanceLog[]): Son
     const list = byDate.get(p.date) ?? [];
     list.push(p);
     byDate.set(p.date, list);
+  }
+  const titleDate = source?.title ? extractPerformanceDateFromTitle(source.title) : null;
+  if (titleDate && !byDate.has(titleDate)) {
+    byDate.set(titleDate, []);
   }
 
   const uniqueDates = [...byDate.keys()].sort();

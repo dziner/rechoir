@@ -48,7 +48,7 @@ export async function fetchSongs(): Promise<SongWithDerived[]> {
           ...(demoPerfs.some(p => p.songId === s.id && p.services.includes('2부')) ? ['2부성가대'] : []),
         ].filter((v, i, a) => a.indexOf(v) === i),
       },
-      derived: calcDerived(s.id, demoPerfs),
+      derived: calcDerived(s.id, demoPerfs, s),
       performances: demoPerfs.filter(p => p.songId === s.id),
     }));
   }
@@ -69,7 +69,7 @@ export async function fetchSong(id: string): Promise<SongWithDerived> {
           ...(perfs.some(p => p.services.includes('2부')) ? ['2부성가대'] : []),
         ].filter((v, i, a) => a.indexOf(v) === i),
       },
-      derived: calcDerived(id, demoPerfs),
+      derived: calcDerived(id, demoPerfs, song),
       performances: perfs,
     };
   }

@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import { google, type sheets_v4 } from 'googleapis';
 
 export interface Song {
   id: string;
@@ -26,6 +26,31 @@ export interface PerformanceLog {
   note: string;
 }
 
+const SONG_HEADERS = [
+  'id',
+  'title',
+  'youtubeUrl',
+  'thumbnail',
+  'publishedAt',
+  'active',
+  'theme',
+  'tempo',
+  'mood',
+  'strings',
+  'difficulty',
+];
+
+const PERFORMANCE_HEADERS = [
+  'id',
+  'songId',
+  'date',
+  'services',
+  'type',
+  'note',
+];
+
+const schemaInitBySheetId = new Map<string, Promise<void>>();
+
 function getAuth() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not set');
@@ -47,6 +72,87 @@ async function getSheets() {
   return google.sheets({ version: 'v4', auth });
 }
 
+async function getSheetContext() {
+  const sheets = await getSheets();
+  const sheetId = getSheetId();
+  await ensureSchema(sheets, sheetId);
+  return { sheets, sheetId };
+}
+
+async function ensureSchema(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+): Promise<void> {
+  let init = schemaInitBySheetId.get(spreadsheetId);
+  if (!init) {
+    init = ensureSchemaOnce(sheets, spreadsheetId).catch(error => {
+      schemaInitBySheetId.delete(spreadsheetId);
+      throw error;
+    });
+    schemaInitBySheetId.set(spreadsheetId, init);
+  }
+  await init;
+}
+
+async function ensureSchemaOnce(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+): Promise<void> {
+  const metadata = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties.title',
+  });
+  const titles = new Set(
+    (metadata.data.sheets ?? [])
+      .map(sheet => sheet.properties?.title)
+      .filter((title): title is string => Boolean(title)),
+  );
+
+  const requests: sheets_v4.Schema$Request[] = [];
+  if (!titles.has('songs')) {
+    requests.push({
+      addSheet: {
+        properties: {
+          title: 'songs',
+          gridProperties: { rowCount: 200, columnCount: SONG_HEADERS.length, frozenRowCount: 1 },
+        },
+      },
+    });
+  }
+  if (!titles.has('performances')) {
+    requests.push({
+      addSheet: {
+        properties: {
+          title: 'performances',
+          gridProperties: {
+            rowCount: 200,
+            columnCount: PERFORMANCE_HEADERS.length,
+            frozenRowCount: 1,
+          },
+        },
+      },
+    });
+  }
+
+  if (requests.length > 0) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests },
+    });
+  }
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: 'RAW',
+      data: [
+        { range: 'songs!A1:K1', values: [SONG_HEADERS] },
+        { range: 'performances!A1:F1', values: [PERFORMANCE_HEADERS] },
+      ],
+    },
+  });
+}
+
 function csvToArray(s: string): string[] {
   return s ? s.split(',').map(x => x.trim()).filter(Boolean) : [];
 }
@@ -58,9 +164,9 @@ function arrayToCsv(a: string[]): string {
 // --- Songs ---
 
 export async function getSongs(): Promise<Song[]> {
-  const sheets = await getSheets();
+  const { sheets, sheetId } = await getSheetContext();
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: getSheetId(),
+    spreadsheetId: sheetId,
     range: 'songs!A2:K',
   });
   const rows = res.data.values ?? [];
@@ -68,9 +174,9 @@ export async function getSongs(): Promise<Song[]> {
 }
 
 export async function getAllSongs(): Promise<Song[]> {
-  const sheets = await getSheets();
+  const { sheets, sheetId } = await getSheetContext();
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: getSheetId(),
+    spreadsheetId: sheetId,
     range: 'songs!A2:K',
   });
   return rowsToSongs(res.data.values ?? []);
@@ -103,8 +209,7 @@ function rowsToSongs(rows: unknown[][]): Song[] {
 }
 
 export async function upsertSong(song: Song): Promise<void> {
-  const sheets = await getSheets();
-  const sheetId = getSheetId();
+  const { sheets, sheetId } = await getSheetContext();
 
   // Find existing row
   const res = await sheets.spreadsheets.values.get({
@@ -151,8 +256,7 @@ export async function updateSongTags(
   songId: string,
   tags: Partial<Song['tags']>,
 ): Promise<void> {
-  const sheets = await getSheets();
-  const sheetId = getSheetId();
+  const { sheets, sheetId } = await getSheetContext();
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
@@ -190,9 +294,9 @@ export async function updateSongTags(
 // --- Performances ---
 
 export async function getPerformances(songId?: string): Promise<PerformanceLog[]> {
-  const sheets = await getSheets();
+  const { sheets, sheetId } = await getSheetContext();
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: getSheetId(),
+    spreadsheetId: sheetId,
     range: 'performances!A2:F',
   });
   const rows = res.data.values ?? [];
@@ -210,9 +314,9 @@ export async function getPerformances(songId?: string): Promise<PerformanceLog[]
 }
 
 export async function appendPerformance(perf: Omit<PerformanceLog, 'id'> & { id: string }): Promise<void> {
-  const sheets = await getSheets();
+  const { sheets, sheetId } = await getSheetContext();
   await sheets.spreadsheets.values.append({
-    spreadsheetId: getSheetId(),
+    spreadsheetId: sheetId,
     range: 'performances!A:F',
     valueInputOption: 'RAW',
     requestBody: {

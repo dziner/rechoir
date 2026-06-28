@@ -2,6 +2,7 @@ import type {
   SongWithDerived, RecommendFilters, AppSettings, RecommendedSong, Difficulty,
 } from '../types';
 import { DIFFICULTY_KO } from '../types';
+import { fmtLastPerformed } from './utils';
 
 function tagOverlap(a: string[], b: string[]): number {
   if (b.length === 0) return 0;
@@ -36,7 +37,7 @@ function reasonText(
   const reasons: string[] = [];
 
   if (derived.weeksSinceLast !== null) {
-    reasons.push(`마지막으로 부른 지 **${derived.weeksSinceLast}주**`);
+    reasons.push(`마지막 **${fmtLastPerformed(derived)}**`);
   } else {
     reasons.push('공연 이력 없음 (신곡 후보)');
   }

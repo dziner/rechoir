@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import type { SongWithDerived } from '../types';
 import { TagBadge } from './TagBadge';
 import { TEMPO_KO, DIFFICULTY_KO } from '../types';
-import { fmtWeeks } from '../lib/utils';
+import { fmtLastPerformed } from '../lib/utils';
 
 interface SongCardProps {
   song: SongWithDerived;
@@ -34,7 +34,7 @@ export function SongCard({ song }: SongCardProps) {
         </p>
 
         <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-          <span>{fmtWeeks(derived.weeksSinceLast)}</span>
+          <span>{fmtLastPerformed(derived)}</span>
           {derived.encoreCount > 0 && (
             <>
               <span className="text-gray-300">·</span>

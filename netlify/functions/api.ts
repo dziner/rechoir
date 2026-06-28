@@ -282,7 +282,7 @@ const handler: Handler = async (event) => {
           const song = songs.find(s => s.id === id);
           if (!song) return err(404, '곡을 찾을 수 없습니다.');
           const perfs = performances.filter(p => p.songId === id);
-          const derived = calcDerived(id, performances);
+          const derived = calcDerived(id, performances, song);
           const has2nd = perfs.some(p => p.services.includes('2부'));
           return ok({
             ...song,
@@ -297,7 +297,7 @@ const handler: Handler = async (event) => {
 
         const result = songs.map(song => {
           const perfs = performances.filter(p => p.songId === song.id);
-          const derived = calcDerived(song.id, performances);
+          const derived = calcDerived(song.id, performances, song);
           const has2nd = perfs.some(p => p.services.includes('2부'));
           return {
             ...song,

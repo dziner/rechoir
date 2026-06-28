@@ -8,7 +8,7 @@ import { YouTubeEmbed } from '../components/YouTubeEmbed';
 import { PerformanceTimeline } from '../components/PerformanceTimeline';
 import { TEMPO_KO, DIFFICULTY_KO, COMMON_THEMES, COMMON_MOODS } from '../types';
 import type { SongTags, Tempo, Difficulty } from '../types';
-import { fmtWeeks } from '../lib/utils';
+import { fmtLastPerformed } from '../lib/utils';
 
 export function SongDetail() {
   const { id } = useParams<{ id: string }>();
@@ -80,7 +80,7 @@ export function SongDetail() {
       <div>
         <h1 className="text-xl font-bold text-gray-900">{song.title}</h1>
         <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600">
-          <span>마지막 공연: <strong>{fmtWeeks(derived.weeksSinceLast)}</strong></span>
+          <span>마지막 공연: <strong>{fmtLastPerformed(derived)}</strong></span>
           <span>총 공연: <strong>{derived.performanceCount}회</strong></span>
           <span>앵콜: <strong>{derived.encoreCount}회</strong></span>
         </div>
