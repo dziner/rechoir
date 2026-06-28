@@ -1,10 +1,17 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+
+function hashSecret(value: string): Buffer {
+  return createHash('sha256').update(value).digest();
+}
+
 export function checkPassword(provided: string): boolean {
   const expected = process.env.EDIT_PASSWORD;
   if (!expected) {
     // If no password is configured, reject all attempts
     return false;
   }
-  return provided === expected;
+
+  return timingSafeEqual(hashSecret(provided), hashSecret(expected));
 }
 
 export function corsHeaders() {

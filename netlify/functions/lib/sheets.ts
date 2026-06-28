@@ -61,7 +61,7 @@ export async function getSongs(): Promise<Song[]> {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: getSheetId(),
-    range: 'songs!A2:L',
+    range: 'songs!A2:K',
   });
   const rows = res.data.values ?? [];
   return rows

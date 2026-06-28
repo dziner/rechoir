@@ -1,16 +1,24 @@
 import type { Song, PerformanceLog, SongWithDerived, AppSettings } from '../types';
+import { DEFAULT_SETTINGS } from '../types';
 import { calcDerived } from './utils';
 import { DEMO_SONGS, DEMO_PERFORMANCES } from './demo-data';
 
 const DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
+function readJson<T>(key: string, fallback: T): T {
+  const stored = localStorage.getItem(key);
+  if (!stored) return JSON.parse(JSON.stringify(fallback)) as T;
+  try {
+    return JSON.parse(stored) as T;
+  } catch {
+    localStorage.removeItem(key);
+    return JSON.parse(JSON.stringify(fallback)) as T;
+  }
+}
+
 // In-memory store for demo mode
-let demoSongs: Song[] = JSON.parse(
-  localStorage.getItem('rechoir_songs') ?? JSON.stringify(DEMO_SONGS),
-);
-let demoPerfs: PerformanceLog[] = JSON.parse(
-  localStorage.getItem('rechoir_performances') ?? JSON.stringify(DEMO_PERFORMANCES),
-);
+let demoSongs: Song[] = readJson('rechoir_songs', DEMO_SONGS);
+let demoPerfs: PerformanceLog[] = readJson('rechoir_performances', DEMO_PERFORMANCES);
 
 function saveDemoSongs() { localStorage.setItem('rechoir_songs', JSON.stringify(demoSongs)); }
 function saveDemoPerfs() { localStorage.setItem('rechoir_performances', JSON.stringify(demoPerfs)); }
@@ -65,7 +73,7 @@ export async function fetchSong(id: string): Promise<SongWithDerived> {
       performances: perfs,
     };
   }
-  return apiFetch<SongWithDerived>(`/songs/${id}`);
+  return apiFetch<SongWithDerived>(`/songs/${encodeURIComponent(id)}`);
 }
 
 export async function updateSongTags(
@@ -103,7 +111,7 @@ export async function fetchPerformances(songId?: string): Promise<PerformanceLog
   if (DEMO) {
     return songId ? demoPerfs.filter(p => p.songId === songId) : demoPerfs;
   }
-  const qs = songId ? `?songId=${songId}` : '';
+  const qs = songId ? `?songId=${encodeURIComponent(songId)}` : '';
   return apiFetch<PerformanceLog[]>(`/performances${qs}`);
 }
 
@@ -150,9 +158,7 @@ export async function verifyPassword(password: string): Promise<boolean> {
 // --- Settings ---
 
 export async function fetchSettings(): Promise<AppSettings> {
-  const stored = localStorage.getItem('rechoir_settings');
-  if (stored) return JSON.parse(stored);
-  return { cooldownWeeks: 12, weights: { rest: 0.35, theme: 0.40, encore: 0.15, readiness: 0.10 } };
+  return readJson('rechoir_settings', DEFAULT_SETTINGS);
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {

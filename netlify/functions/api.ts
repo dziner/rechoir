@@ -1,4 +1,5 @@
 import type { Handler, HandlerEvent, HandlerResponse } from '@netlify/functions';
+import { randomUUID } from 'node:crypto';
 import { checkPassword, corsHeaders } from './lib/auth';
 import {
   getSongs, upsertSong, updateSongTags, getPerformances, appendPerformance,
@@ -22,6 +23,117 @@ function parsePath(event: HandlerEvent): string[] {
   return raw.split('/').filter(Boolean);
 }
 
+function parseBody(event: HandlerEvent): Record<string, unknown> | null {
+  if (!event.body) return {};
+  try {
+    const parsed = JSON.parse(event.body) as unknown;
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isIsoDate(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function parseTagPatch(value: unknown): Partial<Song['tags']> | null {
+  if (!isRecord(value)) return null;
+
+  const tags: Partial<Song['tags']> = {};
+  if ('theme' in value) {
+    if (!isStringArray(value.theme)) return null;
+    tags.theme = value.theme;
+  }
+  if ('tempo' in value) {
+    if (!['slow', 'mid', 'fast'].includes(String(value.tempo))) return null;
+    tags.tempo = String(value.tempo);
+  }
+  if ('mood' in value) {
+    if (!isStringArray(value.mood)) return null;
+    tags.mood = value.mood;
+  }
+  if ('strings' in value) {
+    if (typeof value.strings !== 'boolean') return null;
+    tags.strings = value.strings;
+  }
+  if ('difficulty' in value) {
+    if (!['low', 'mid', 'high'].includes(String(value.difficulty))) return null;
+    tags.difficulty = String(value.difficulty);
+  }
+  if ('auto' in value) {
+    if (!isStringArray(value.auto)) return null;
+    tags.auto = value.auto;
+  }
+
+  return tags;
+}
+
+function parseSongTags(value: unknown): Song['tags'] | null {
+  const patch = parseTagPatch(value);
+  if (!patch || !patch.theme || !patch.tempo || !patch.mood
+    || typeof patch.strings !== 'boolean' || !patch.difficulty) {
+    return null;
+  }
+
+  return {
+    theme: patch.theme,
+    tempo: patch.tempo,
+    mood: patch.mood,
+    strings: patch.strings,
+    difficulty: patch.difficulty,
+    auto: patch.auto ?? [],
+  };
+}
+
+function parseSong(value: unknown): Song | null {
+  if (!isRecord(value)) return null;
+  const tags = parseSongTags(value.tags);
+  if (!tags) return null;
+  if (!isNonEmptyString(value.id) || !isNonEmptyString(value.title)) return null;
+  if (!isNonEmptyString(value.youtubeUrl) || !isNonEmptyString(value.thumbnail)) return null;
+  if (!isIsoDate(value.publishedAt) || typeof value.active !== 'boolean') return null;
+
+  return {
+    id: value.id,
+    title: value.title,
+    youtubeUrl: value.youtubeUrl,
+    thumbnail: value.thumbnail,
+    publishedAt: value.publishedAt,
+    active: value.active,
+    tags,
+  };
+}
+
+function parsePerformance(value: unknown): Omit<PerformanceLog, 'id'> | null {
+  if (!isRecord(value)) return null;
+  if (!isNonEmptyString(value.songId) || !isIsoDate(value.date)) return null;
+  if (!isStringArray(value.services) || value.services.length === 0) return null;
+  if (!value.services.every(service => ['1부', '2부'].includes(service))) return null;
+  if (!['new', 'encore'].includes(String(value.type))) return null;
+  if ('note' in value && typeof value.note !== 'string') return null;
+
+  return {
+    songId: value.songId,
+    date: value.date,
+    services: value.services,
+    type: String(value.type),
+    note: typeof value.note === 'string' ? value.note : '',
+  };
+}
+
 const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return resp(204, '');
 
@@ -29,10 +141,8 @@ const handler: Handler = async (event) => {
   const [resource, id, action] = segments;
   const method = event.httpMethod;
 
-  let body: Record<string, unknown> = {};
-  if (event.body) {
-    try { body = JSON.parse(event.body); } catch { /* ignore */ }
-  }
+  const body = parseBody(event);
+  if (!body) return err(400, '요청 본문 JSON 형식이 올바르지 않습니다.');
 
   // --- /auth ---
   if (resource === 'auth' && method === 'POST') {
@@ -82,8 +192,10 @@ const handler: Handler = async (event) => {
     if (method === 'POST' && !id) {
       // Add new song
       if (!checkPassword(String(body.password ?? ''))) return err(401, '권한 없음');
+      const song = parseSong(body.song);
+      if (!song) return err(400, '곡 데이터가 올바르지 않습니다.');
       try {
-        await upsertSong(body.song as Song);
+        await upsertSong(song);
         return ok({ ok: true });
       } catch (e) {
         return err(500, (e as Error).message);
@@ -93,8 +205,10 @@ const handler: Handler = async (event) => {
     if (method === 'POST' && id && action === 'tags') {
       // Update tags
       if (!checkPassword(String(body.password ?? ''))) return err(401, '권한 없음');
+      const tags = parseTagPatch(body.tags);
+      if (!tags) return err(400, '태그 데이터가 올바르지 않습니다.');
       try {
-        await updateSongTags(id, body.tags as Partial<Song['tags']>);
+        await updateSongTags(id, tags);
         return ok({ ok: true });
       } catch (e) {
         return err(500, (e as Error).message);
@@ -116,9 +230,10 @@ const handler: Handler = async (event) => {
 
     if (method === 'POST') {
       if (!checkPassword(String(body.password ?? ''))) return err(401, '권한 없음');
+      const perf = parsePerformance(body.performance);
+      if (!perf) return err(400, '공연 기록 데이터가 올바르지 않습니다.');
       try {
-        const perf = body.performance as Omit<PerformanceLog, 'id'>;
-        const newPerf = { ...perf, id: crypto.randomUUID() };
+        const newPerf = { ...perf, id: randomUUID() };
         await appendPerformance(newPerf);
 
         // Auto-tag 2부성가대 if services includes 2부
@@ -157,7 +272,7 @@ const handler: Handler = async (event) => {
 
     try {
       const existing = await getSongs();
-      const existingIds = new Set(existing.map(s => s.id));
+      const existingById = new Map(existing.map(s => [s.id, s]));
       let added = 0;
       let updated = 0;
       let pageToken: string | undefined;
@@ -173,11 +288,14 @@ const handler: Handler = async (event) => {
         const ytRes = await fetch(
           `https://www.googleapis.com/youtube/v3/playlistItems?${params}`,
         );
+        if (!ytRes.ok) {
+          throw new Error(`YouTube API 오류 (${ytRes.status})`);
+        }
         const data = await ytRes.json() as {
           nextPageToken?: string;
           items?: Array<{
             snippet: {
-              resourceId: { videoId: string };
+              resourceId?: { videoId?: string };
               title: string;
               publishedAt: string;
               thumbnails?: { maxres?: { url: string }; high?: { url: string } };
@@ -186,7 +304,7 @@ const handler: Handler = async (event) => {
         };
 
         for (const item of data.items ?? []) {
-          const videoId = item.snippet.resourceId.videoId;
+          const videoId = item.snippet.resourceId?.videoId;
           if (!videoId || videoId === 'Private video') continue;
           const song: Song = {
             id: videoId,
@@ -202,12 +320,31 @@ const handler: Handler = async (event) => {
               theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
             },
           };
-          if (existingIds.has(videoId)) {
-            updated++;
-          } else {
-            await upsertSong(song);
-            added++;
+          const existingSong = existingById.get(videoId);
+          if (existingSong) {
+            const refreshed = {
+              ...existingSong,
+              title: song.title,
+              youtubeUrl: song.youtubeUrl,
+              thumbnail: song.thumbnail,
+              publishedAt: song.publishedAt,
+            };
+            const changed =
+              refreshed.title !== existingSong.title ||
+              refreshed.youtubeUrl !== existingSong.youtubeUrl ||
+              refreshed.thumbnail !== existingSong.thumbnail ||
+              refreshed.publishedAt !== existingSong.publishedAt;
+
+            if (changed) {
+              await upsertSong(refreshed);
+              updated++;
+            }
+            continue;
           }
+
+          await upsertSong(song);
+          existingById.set(videoId, song);
+          added++;
         }
 
         pageToken = data.nextPageToken;

@@ -1,0 +1,51 @@
+# Rechoir Review Todo
+
+작성 기준: 원래 PRD/Claude Code 구현 방향은 존중한다. 크리티컬한 결함, 보안 문제, 데이터 손상 가능성, 명백한 유지보수 리스크를 우선 검출한다. YAGNI 관점에서는 "확연히 더 나은 단순화"가 있는 경우만 수정 제안하고, 애매한 취향성 리팩터링은 보류한다.
+
+## 해야 할 일
+
+- [ ] P1 공개 배포 전 인증 모델 결정: `sessionStorage` 평문 비밀번호 보관을 단기 서버 토큰 또는 재입력 방식으로 바꿀지 검토
+- [ ] P1 공개 배포 전 CORS/rate limit 결정: `Access-Control-Allow-Origin: *` 유지 가능 범위와 비밀번호 시도 제한 방식 검토
+- [ ] P1 배포 환경 확인: Netlify/CI Node 버전이 `package.json`의 `>=22.12` 조건을 만족하는지 확인
+- [ ] P2 inactive 곡 운영 정책 확인: inactive 곡을 실제로 쓰면 playlist sync가 중복 추가하지 않도록 `getAllSongs()` 분리
+- [ ] P2 테스트 보강 후보: `calcDerived`, `scoreSongs`, API validator 단위 테스트 추가
+- [ ] P2 설정 공유 정책 확인: 추천 가중치/쿨다운이 사용자별 localStorage인지, 운영자 공용 Sheets 저장인지 결정
+- [ ] P3 문서 보강 후보: README가 필요하면 Google Sheets 컬럼 구조, 환경변수, 배포 절차를 짧게 추가
+
+## 완료
+
+- [x] done P1 2026-06-28 Google Sheets DB 대상 반영: `GOOGLE_SHEET_ID=1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw`
+- [x] done P1 2026-06-28 Google Sheets 설정 문서 작성: `docs/google-sheets-setup.md`
+- [x] done P1 2026-06-28 Apps Script 초기화 스크립트 작성: `scripts/google-apps-script/rechoir-db-setup.gs`
+- [x] done P2 2026-06-28 `songs` 읽기 범위 정리: 실제 사용 컬럼에 맞춰 `songs!A2:K`
+- [x] done P2 2026-06-28 Google Sheets 설정 반영 후 검증: Apps Script 문법 확인, `npm run typecheck`, `npm run build`, `npm audit --json`, `git diff --check`
+- [x] done P2 2026-06-28 리뷰 문서 작성: `docs/review-2026-06-28.md`
+- [x] done P2 2026-06-28 데모 서버 smoke 확인: `VITE_DEMO_MODE=true npm run dev:vite -- --host 127.0.0.1 --port 5173`, `/` 200 OK
+- [x] done P1 2026-06-28 검증 완료: `npm run typecheck`, `npm run build`, `npm audit --json`
+- [x] done P1 2026-06-28 보안 의존성 업데이트: `googleapis`, `vite`, `@vitejs/plugin-react`, `@types/node`
+- [x] done P1 2026-06-28 Netlify Functions 타입체크 추가: `tsconfig.functions.json`, `npm run typecheck`
+- [x] done P1 2026-06-28 API 입력 검증 추가: 곡 추가, 태그 수정, 공연 기록 추가 payload 400 처리
+- [x] done P1 2026-06-28 비밀번호 비교 강화: 해시 후 `timingSafeEqual` 사용
+- [x] done P1 2026-06-28 YouTube sync 개선: 실패 응답 처리, 기존 곡 메타데이터 변경 시 태그 보존 갱신
+- [x] done P2 2026-06-28 클라이언트 안정성 개선: 깨진 localStorage fallback, YouTube ID 검증, 일부 URL 인코딩
+- [x] done P2 2026-06-28 구조/YAGNI 리뷰: 현재 규모에서는 단일 Netlify 라우터, Google Sheets 저장소, 중복 derived 계산 유지가 적절하다고 판단
+- [x] done P2 2026-06-28 사용자 흐름 리뷰: 추천, 라이브러리, 곡 상세, 기록, 설정/동기화 흐름 점검
+- [x] done P1 2026-06-28 데이터 무결성 리뷰: Sheets upsert/update/append와 sync 동작 점검
+- [x] done P1 2026-06-28 보안 리뷰: 비밀번호 처리, CORS, secret 노출 검색, dependency audit 점검
+- [x] done P1 2026-06-28 검증 실행: 의존성 설치, 타입체크/빌드, 보안 감사 수행
+- [x] done P1 2026-06-28 저장소 구조와 제품 의도 파악: 프론트, Netlify Functions, Google Sheets, 데모 모드 경계 정리
+- [x] done P1 2026-06-28 초기 저장소 파일 목록과 Git 상태 확인
+- [x] done P1 2026-06-28 기존 메모리에서 rechoir 관련 이전 맥락 검색: 관련 기록 없음
+
+## 검토 로그
+
+- 2026-06-28 시작: `/Users/jinuk/_DEV/rechoir`에서 리뷰 진행. 현재 브랜치는 `claude/rechoir-encore-service-u6nceq`.
+- 2026-06-28 초기 관찰: Vite/React 프론트엔드와 Netlify Functions API, Google Sheets 저장소, YouTube playlist sync로 구성된 소형 서비스 구조로 보임.
+- 2026-06-28 최초 `npm audit`: high 1건, moderate 5건. 주로 Vite 개발 서버 계열과 `googleapis` 하위 의존성.
+- 2026-06-28 의존성 업데이트 후 `npm audit`: 취약점 0건.
+- 2026-06-28 `npm run build`: 성공. 빌드 과정에 Netlify Functions 타입체크 포함.
+- 2026-06-28 demo mode Vite 서버 확인: `http://127.0.0.1:5173/` 200 OK.
+- 2026-06-28 secret 검색 결과: 실제 키 원문은 발견되지 않음. 남은 구조 리스크는 `sessionStorage` 비밀번호 보관과 wildcard CORS.
+- 2026-06-28 사용자가 지정한 DB 스프레드시트 ID를 `.env.example`과 설정 문서에 반영.
+- 2026-06-28 Apps Script는 런타임 API가 아니라 `songs`/`performances` 시트 헤더, 필터, 체크박스, 드롭다운을 적용하는 초기화 도구로 제공.
+- 2026-06-28 설정 반영 후 `npm run typecheck`, `npm run build`, `npm audit --json`, `git diff --check` 성공.

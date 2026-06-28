@@ -5,7 +5,9 @@ import { useAuth } from '../hooks/useAuth';
 import { PasswordGate } from '../components/PasswordGate';
 import type { AppSettings, Song } from '../types';
 import { DEFAULT_SETTINGS } from '../types';
-import { generateId, youtubeIdFromUrl, thumbnailUrl } from '../lib/utils';
+import { youtubeIdFromUrl, thumbnailUrl } from '../lib/utils';
+
+const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 function SettingsForm() {
   const { getPassword } = useAuth();
@@ -55,7 +57,11 @@ function SettingsForm() {
 
   const handleImport = () => {
     if (!importUrl || !importTitle) return;
-    const id = youtubeIdFromUrl(importUrl);
+    const id = youtubeIdFromUrl(importUrl.trim());
+    if (!YOUTUBE_ID_RE.test(id)) {
+      setImportStatus('오류: 올바른 YouTube URL 또는 영상 ID를 입력해 주세요.');
+      return;
+    }
     const song: Song = {
       id,
       title: importTitle,
