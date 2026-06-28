@@ -14,6 +14,8 @@
 
 ## 완료
 
+- [x] done P1 2026-06-28 PRD 중복 카운트 복구: YouTube videoId 기준 곡 중복을 제목 정규화 기준으로 병합하고, 1부/2부 같은 날짜는 하나의 공연으로 기록
+- [x] done P1 2026-06-28 라이브 Google Sheet 중복 정리: `songs` 183행을 140곡으로 압축하고 `performances` 168개 날짜별 기록 생성
 - [x] done P1 2026-06-28 Google Sheet 연결 실측 확인: 대상 문서는 `rechoir_DB`, `songs` 탭 `sheetId=1086318606`
 - [x] done P1 2026-06-28 Google Sheet 행 위치 복구: Apps Script 체크박스 값 때문에 1001행부터 들어간 183곡을 2행부터 보이도록 압축 정리
 - [x] done P1 2026-06-28 Sheets upsert 보강: `values.append` 대신 첫 빈 `id` 행에 직접 `update`하여 빈 체크박스 행 뒤로 밀리지 않도록 변경
@@ -77,3 +79,5 @@
 - 2026-06-28 복구 작업: `songs`의 ID 있는 183개 행을 2행부터 재배치하고, 185행 이하의 이전 위치/빈 체크박스 값을 정리.
 - 2026-06-28 재발 방지: 서버 upsert를 첫 빈 `id` 행 직접 쓰기로 변경하고, Apps Script 체크박스 적용 범위를 실제 데이터 행으로 제한.
 - 2026-06-28 체크박스 경고 원인: `active`, `strings` 열은 checkbox validation이지만 값이 문자열 `"TRUE"`/`"FALSE"`라 Invalid가 표시됨. 서버 쓰기와 Apps Script를 boolean 저장으로 변경하고 라이브 `songs!F2:F184`, `songs!J2:J184`를 변환.
+- 2026-06-28 PRD 기준 재확인: 같은 곡을 1부/2부에 부른 경우는 하나의 공연으로 카운트해야 함. 기존 sync는 YouTube videoId마다 곡을 생성해 `I AM 1부`, `I AM 2부`가 별도 곡으로 노출됨.
+- 2026-06-28 중복 병합 적용: 제목에서 날짜, `콰이어`, `1부`/`2부`, 일부 예배/행사 표기를 제거한 canonical key로 곡을 병합. 라이브 시트는 `songs` 183행에서 140곡으로 정리, `I AM`은 하나의 곡과 4개 날짜별 공연으로 정리됨.

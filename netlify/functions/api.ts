@@ -2,10 +2,12 @@ import type { Handler, HandlerEvent, HandlerResponse } from '@netlify/functions'
 import { randomUUID } from 'node:crypto';
 import { checkPassword, corsHeaders } from './lib/auth';
 import {
-  getSongs, getAllSongs, upsertSong, updateSongTags, getPerformances, appendPerformance,
+  getSongs, getAllSongs, upsertSong, updateSongTags, getPerformances,
+  appendPerformance, upsertPerformancesBySongDate,
   type Song, type PerformanceLog,
 } from './lib/sheets';
 import { calcDerived } from './lib/derived';
+import { parsePlaylistTitle, type ParsedPlaylistTitle } from './lib/playlist';
 
 const DEFAULT_PLAYLIST_ID = 'PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7';
 
@@ -156,6 +158,15 @@ type PlaylistSyncResult = {
   playlistId: string;
 };
 
+interface PlaylistVideo {
+  videoId: string;
+  title: string;
+  youtubeUrl: string;
+  thumbnail: string;
+  publishedAt: string;
+  parsed: ParsedPlaylistTitle;
+}
+
 async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
   const youtubeApiKey = process.env.YOUTUBE_API_KEY;
   const playlistId = getPlaylistId();
@@ -166,6 +177,15 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
 
   const existing = await getAllSongs();
   const existingById = new Map(existing.map(s => [s.id, s]));
+  const canonicalByKey = new Map<string, Song>();
+  for (const song of existing) {
+    const key = parsePlaylistTitle(song.title).canonicalKey;
+    const current = canonicalByKey.get(key);
+    if (!key || (current && compareSongRecency(current, song) <= 0)) continue;
+    canonicalByKey.set(key, song);
+  }
+
+  const videos: PlaylistVideo[] = [];
   let added = 0;
   let updated = 0;
   let scanned = 0;
@@ -202,8 +222,8 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
       if (!videoId || videoId === 'Private video') continue;
       scanned++;
 
-      const song: Song = {
-        id: videoId,
+      videos.push({
+        videoId,
         title: item.snippet.title,
         youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
         thumbnail:
@@ -211,43 +231,112 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
           item.snippet.thumbnails?.high?.url ??
           `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
         publishedAt: item.snippet.publishedAt.slice(0, 10),
-        active: true,
-        tags: {
-          theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
-        },
-      };
-
-      const existingSong = existingById.get(videoId);
-      if (existingSong) {
-        const refreshed = {
-          ...existingSong,
-          title: song.title,
-          youtubeUrl: song.youtubeUrl,
-          thumbnail: song.thumbnail,
-          publishedAt: song.publishedAt,
-        };
-        const changed =
-          refreshed.title !== existingSong.title ||
-          refreshed.youtubeUrl !== existingSong.youtubeUrl ||
-          refreshed.thumbnail !== existingSong.thumbnail ||
-          refreshed.publishedAt !== existingSong.publishedAt;
-
-        if (changed) {
-          await upsertSong(refreshed);
-          updated++;
-        }
-        continue;
-      }
-
-      await upsertSong(song);
-      existingById.set(videoId, song);
-      added++;
+        parsed: parsePlaylistTitle(item.snippet.title),
+      });
     }
 
     pageToken = data.nextPageToken;
   } while (pageToken);
 
+  const videosByKey = new Map<string, PlaylistVideo[]>();
+  for (const video of videos) {
+    const group = videosByKey.get(video.parsed.canonicalKey) ?? [];
+    group.push(video);
+    videosByKey.set(video.parsed.canonicalKey, group);
+  }
+
+  const playlistPerformances: Array<Omit<PerformanceLog, 'id'> & { id: string }> = [];
+
+  for (const [key, group] of videosByKey) {
+    const bestVideo = [...group].sort(comparePlaylistVideoRecency)[0];
+    const existingCanonical = canonicalByKey.get(key);
+    const canonicalSong: Song = {
+      ...(existingCanonical ?? {
+        id: bestVideo.videoId,
+        active: true,
+        tags: {
+          theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
+        },
+      }),
+      title: bestVideo.parsed.canonicalTitle,
+      youtubeUrl: bestVideo.youtubeUrl,
+      thumbnail: bestVideo.thumbnail,
+      publishedAt: bestVideo.publishedAt,
+      active: true,
+    };
+    const existingRow = existingCanonical ?? existingById.get(bestVideo.videoId);
+    const changed = !existingRow || hasSongChanged(existingRow, canonicalSong);
+
+    if (changed) {
+      await upsertSong(canonicalSong);
+      if (existingRow) updated++;
+      else added++;
+    }
+    canonicalByKey.set(key, canonicalSong);
+
+    for (const video of group) {
+      const duplicate = existingById.get(video.videoId);
+      if (duplicate && duplicate.id !== canonicalSong.id && duplicate.active) {
+        await upsertSong({ ...duplicate, active: false });
+        updated++;
+      }
+    }
+
+    const performanceDates = collectPlaylistPerformances(group);
+    for (const [index, performance] of performanceDates.entries()) {
+      playlistPerformances.push({
+        id: randomUUID(),
+        songId: canonicalSong.id,
+        date: performance.date,
+        services: performance.services,
+        type: index === 0 ? 'new' : 'encore',
+        note: 'playlist sync',
+      });
+    }
+  }
+
+  await upsertPerformancesBySongDate(playlistPerformances);
+
   return { added, updated, scanned, playlistId };
+}
+
+function comparePlaylistVideoRecency(a: PlaylistVideo, b: PlaylistVideo): number {
+  const aDate = a.parsed.performanceDate ?? a.publishedAt;
+  const bDate = b.parsed.performanceDate ?? b.publishedAt;
+  return bDate.localeCompare(aDate);
+}
+
+function compareSongRecency(a: Song, b: Song): number {
+  const aDate = parsePlaylistTitle(a.title).performanceDate ?? a.publishedAt;
+  const bDate = parsePlaylistTitle(b.title).performanceDate ?? b.publishedAt;
+  return bDate.localeCompare(aDate);
+}
+
+function hasSongChanged(left: Song, right: Song): boolean {
+  return left.title !== right.title ||
+    left.youtubeUrl !== right.youtubeUrl ||
+    left.thumbnail !== right.thumbnail ||
+    left.publishedAt !== right.publishedAt ||
+    left.active !== right.active;
+}
+
+function collectPlaylistPerformances(
+  videos: PlaylistVideo[],
+): Array<{ date: string; services: string[] }> {
+  const byDate = new Map<string, Set<string>>();
+  for (const video of videos) {
+    if (!video.parsed.performanceDate) continue;
+    const services = byDate.get(video.parsed.performanceDate) ?? new Set<string>();
+    for (const service of video.parsed.services) services.add(service);
+    byDate.set(video.parsed.performanceDate, services);
+  }
+
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, services]) => ({
+      date,
+      services: [...services].sort((a, b) => a.localeCompare(b, 'ko')),
+    }));
 }
 
 const handler: Handler = async (event) => {

@@ -161,6 +161,10 @@ function arrayToCsv(a: string[]): string {
   return a.join(',');
 }
 
+function mergeServices(a: string[], b: string[]): string[] {
+  return [...new Set([...a, ...b])].sort((left, right) => left.localeCompare(right, 'ko'));
+}
+
 // --- Songs ---
 
 export async function getSongs(): Promise<Song[]> {
@@ -331,4 +335,93 @@ export async function appendPerformance(perf: Omit<PerformanceLog, 'id'> & { id:
       ]],
     },
   });
+}
+
+export async function upsertPerformanceBySongDate(
+  perf: Omit<PerformanceLog, 'id'> & { id: string },
+): Promise<void> {
+  await upsertPerformancesBySongDate([perf]);
+}
+
+export async function upsertPerformancesBySongDate(
+  performances: Array<Omit<PerformanceLog, 'id'> & { id: string }>,
+): Promise<void> {
+  if (performances.length === 0) return;
+
+  const { sheets, sheetId } = await getSheetContext();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: 'performances!A2:F',
+  });
+  const rows = res.data.values ?? [];
+
+  const existingBySongDate = new Map<string, { rowNumber: number; row: unknown[] }>();
+  rows.forEach((row, index) => {
+    const songId = cell(row, 1);
+    const date = cell(row, 2);
+    if (songId && date) {
+      existingBySongDate.set(performanceKey(songId, date), {
+        rowNumber: index + 2,
+        row,
+      });
+    }
+  });
+
+  const updates: Array<{ range: string; values: string[][] }> = [];
+  const appends: string[][] = [];
+
+  for (const perf of performances) {
+    const existing = existingBySongDate.get(performanceKey(perf.songId, perf.date));
+    if (!existing) {
+      appends.push(performanceToRow(perf));
+      continue;
+    }
+
+    const row = existing.row;
+    updates.push({
+      range: `performances!A${existing.rowNumber}:F${existing.rowNumber}`,
+      values: [[
+        cell(row, 0) || perf.id,
+        perf.songId,
+        perf.date,
+        arrayToCsv(mergeServices(csvToArray(cell(row, 3)), perf.services)),
+        cell(row, 4) === 'new' || perf.type === 'new' ? 'new' : 'encore',
+        cell(row, 5) || perf.note,
+      ]],
+    });
+  }
+
+  if (updates.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: sheetId,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: updates,
+      },
+    });
+  }
+
+  if (appends.length > 0) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: 'performances!A:F',
+      valueInputOption: 'RAW',
+      requestBody: { values: appends },
+    });
+  }
+}
+
+function performanceKey(songId: string, date: string): string {
+  return `${songId}\u0000${date}`;
+}
+
+function performanceToRow(perf: Omit<PerformanceLog, 'id'> & { id: string }): string[] {
+  return [
+    perf.id,
+    perf.songId,
+    perf.date,
+    arrayToCsv(perf.services),
+    perf.type,
+    perf.note,
+  ];
 }

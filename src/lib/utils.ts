@@ -9,6 +9,7 @@ interface DerivedSource {
 export function extractPerformanceDateFromTitle(title: string): string | null {
   const patterns = [
     /\b(20\d{2})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})\b/,
+    /\b(20\d{2})\s+(\d{1,2})\s+(\d{1,2})\b/,
     /\b(20\d{2})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일?\b/,
   ];
 
