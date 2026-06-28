@@ -167,7 +167,9 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
 
 // --- Sync ---
 
-export async function syncPlaylist(password: string): Promise<{ added: number; updated: number }> {
+export async function syncPlaylist(
+  password: string,
+): Promise<{ added: number; updated: number; scanned?: number; playlistId?: string }> {
   if (DEMO) {
     return { added: 0, updated: 0 };
   }

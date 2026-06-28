@@ -7,7 +7,7 @@
 - [ ] P1 공개 배포 전 인증 모델 결정: `sessionStorage` 평문 비밀번호 보관을 단기 서버 토큰 또는 재입력 방식으로 바꿀지 검토
 - [ ] P1 공개 배포 전 CORS/rate limit 결정: `Access-Control-Allow-Origin: *` 유지 가능 범위와 비밀번호 시도 제한 방식 검토
 - [ ] P1 배포 환경 확인: Netlify/CI Node 버전이 `package.json`의 `>=22.12` 조건을 만족하는지 확인
-- [ ] P2 inactive 곡 운영 정책 확인: inactive 곡을 실제로 쓰면 playlist sync가 중복 추가하지 않도록 `getAllSongs()` 분리
+- [ ] P1 전체 플레이리스트 동기화 사용 시 Netlify에 `YOUTUBE_API_KEY` 설정 확인
 - [ ] P2 테스트 보강 후보: `calcDerived`, `scoreSongs`, API validator 단위 테스트 추가
 - [ ] P2 설정 공유 정책 확인: 추천 가중치/쿨다운이 사용자별 localStorage인지, 운영자 공용 Sheets 저장인지 결정
 - [ ] P3 문서 보강 후보: README가 필요하면 Google Sheets 컬럼 구조, 환경변수, 배포 절차를 짧게 추가
@@ -15,6 +15,12 @@
 ## 완료
 
 - [x] done P1 2026-06-28 Google Sheets DB 대상 반영: `GOOGLE_SHEET_ID=1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw`
+- [x] done P1 2026-06-28 플레이리스트 전체 동기화 공통화: YouTube Data API pagination을 `syncPlaylistIntoSheets()`로 분리
+- [x] done P1 2026-06-28 빈 DB 자동 동기화 추가: `songs` 시트가 완전히 비어 있으면 첫 목록 조회에서 기본 플레이리스트 동기화 시도
+- [x] done P2 2026-06-28 inactive 곡 중복 방지: sync 경로에서 active 필터 없는 `getAllSongs()` 사용
+- [x] done P2 2026-06-28 동기화 설정 문서 업데이트: `YOUTUBE_PLAYLIST_ID`, `AUTO_SYNC_PLAYLIST_ON_EMPTY`, `YOUTUBE_API_KEY` 필요 조건 설명
+- [x] done P1 2026-06-28 서비스 계정 JSON 키 커밋 방지: `.gitignore`에 `docs/*.json`, `*service-account*.json` 추가
+- [x] done P2 2026-06-28 서비스 계정 JSON을 `GOOGLE_SERVICE_ACCOUNT_JSON` 값으로 변환하는 명령을 `docs/google-sheets-setup.md`에 추가
 - [x] done P1 2026-06-28 Google Sheets 설정 문서 작성: `docs/google-sheets-setup.md`
 - [x] done P1 2026-06-28 Apps Script 초기화 스크립트 작성: `scripts/google-apps-script/rechoir-db-setup.gs`
 - [x] done P2 2026-06-28 `songs` 읽기 범위 정리: 실제 사용 컬럼에 맞춰 `songs!A2:K`
@@ -47,5 +53,9 @@
 - 2026-06-28 demo mode Vite 서버 확인: `http://127.0.0.1:5173/` 200 OK.
 - 2026-06-28 secret 검색 결과: 실제 키 원문은 발견되지 않음. 남은 구조 리스크는 `sessionStorage` 비밀번호 보관과 wildcard CORS.
 - 2026-06-28 사용자가 지정한 DB 스프레드시트 ID를 `.env.example`과 설정 문서에 반영.
+- 2026-06-28 서비스 계정 키 파일이 `docs/boxwood-sector-491202-h1-d135bd9ef92d.json`에 있으나 untracked 상태임을 확인. 커밋 방지용 `.gitignore` 규칙 추가.
+- 2026-06-28 Google Cloud 서비스 계정 설정 7번을 위해 JSON 키 파일을 한 줄 환경변수 값으로 변환하는 `node -e ... | pbcopy` 명령을 문서화.
 - 2026-06-28 Apps Script는 런타임 API가 아니라 `songs`/`performances` 시트 헤더, 필터, 체크박스, 드롭다운을 적용하는 초기화 도구로 제공.
 - 2026-06-28 설정 반영 후 `npm run typecheck`, `npm run build`, `npm audit --json`, `git diff --check` 성공.
+- 2026-06-28 플레이리스트 전체 동기화는 YouTube Data API `playlistItems` 페이지네이션으로 처리. API key가 없으면 전체 목록 보장은 하지 않음.
+- 2026-06-28 `AUTO_SYNC_PLAYLIST_ON_EMPTY` 기본값을 true로 두어 빈 DB 첫 조회 시 자동 import를 시도하도록 변경.

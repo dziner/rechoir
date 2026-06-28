@@ -34,7 +34,10 @@ function SettingsForm() {
     mutationFn: () => syncPlaylist(getPassword()),
     onSuccess: result => {
       qc.invalidateQueries({ queryKey: ['songs'] });
-      setSyncStatus(`동기화 완료: ${result.added}곡 추가, ${result.updated}곡 업데이트`);
+      setSyncStatus(
+        `동기화 완료: ${result.scanned ?? result.added + result.updated}개 영상 확인, `
+        + `${result.added}곡 추가, ${result.updated}곡 업데이트`,
+      );
     },
     onError: (e: Error) => setSyncStatus(`오류: ${e.message}`),
   });
@@ -187,7 +190,7 @@ function SettingsForm() {
         <p className="text-xs text-gray-500">
           {isDemo
             ? '데모 모드에서는 실제 동기화가 비활성화됩니다.'
-            : 'YOUTUBE_API_KEY 환경변수가 설정된 경우 사용할 수 있습니다.'}
+            : '지정된 YouTube 플레이리스트의 전체 영상 목록을 Google Sheets로 가져옵니다.'}
         </p>
         {syncStatus && (
           <p className={`text-sm ${syncStatus.startsWith('오류') ? 'text-red-600' : 'text-green-700'}`}>

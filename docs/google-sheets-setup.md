@@ -63,6 +63,22 @@ Netlify Function은 Apps Script가 아니라 Google Sheets API로 시트를 읽�
 6. Rechoir 스프레드시트의 `Share` 버튼을 누르고, 위 `client_email`을 `Editor` 권한으로 초대한다.
 7. 내려받은 JSON 파일 내용 전체를 한 줄 JSON 문자열로 환경변수 `GOOGLE_SERVICE_ACCOUNT_JSON`에 넣는다.
 
+로컬에 받은 키 파일이 예를 들어 `docs/boxwood-sector-491202-h1-d135bd9ef92d.json`라면, 아래 명령으로 Netlify UI에 붙여넣을 값을 클립보드에 복사할 수 있다.
+
+```bash
+node -e "const fs=require('fs'); process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync('docs/boxwood-sector-491202-h1-d135bd9ef92d.json','utf8'))))" | pbcopy
+```
+
+로컬 `.env`에 직접 추가하려면, `.env`에 기존 `GOOGLE_SERVICE_ACCOUNT_JSON=` 줄이 없는지 먼저 확인한 뒤 아래처럼 추가한다.
+
+```bash
+printf 'GOOGLE_SERVICE_ACCOUNT_JSON=' >> .env
+node -e "const fs=require('fs'); process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync('docs/boxwood-sector-491202-h1-d135bd9ef92d.json','utf8'))))" >> .env
+printf '\n' >> .env
+```
+
+키 파일은 절대 커밋하지 않는다. 환경변수 입력이 끝났으면 저장소 밖으로 옮기거나 삭제하는 것이 안전하다.
+
 공식 문서:
 
 - Google Sheets API Node.js quickstart: https://developers.google.com/workspace/sheets/api/quickstart/nodejs
@@ -78,6 +94,8 @@ GOOGLE_SHEET_ID=1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw
 GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"...","client_id":"..."}
 EDIT_PASSWORD=운영자가_정한_편집_비밀번호
 YOUTUBE_API_KEY=선택값
+YOUTUBE_PLAYLIST_ID=PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7
+AUTO_SYNC_PLAYLIST_ON_EMPTY=true
 VITE_DEMO_MODE=false
 ```
 
@@ -85,7 +103,10 @@ VITE_DEMO_MODE=false
 
 - `GOOGLE_SERVICE_ACCOUNT_JSON`, `EDIT_PASSWORD`, `YOUTUBE_API_KEY`는 절대 git에 커밋하지 않는다.
 - Netlify에 넣을 때 JSON 줄바꿈이 깨지면 `private_key`의 줄바꿈이 `\n`으로 유지되는지 확인한다.
-- `YOUTUBE_API_KEY`가 없으면 플레이리스트 동기화만 비활성화되고, 수동 곡 추가는 사용할 수 있다.
+- 플레이리스트의 전체 영상 목록을 가져오려면 `YOUTUBE_API_KEY`가 필요하다.
+- `YOUTUBE_PLAYLIST_ID`를 생략하면 기본값 `PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7`를 사용한다.
+- `AUTO_SYNC_PLAYLIST_ON_EMPTY=true`이면 `songs` 시트가 완전히 비어 있을 때 첫 곡 목록 조회에서 플레이리스트 전체 동기화를 한 번 시도한다.
+- `YOUTUBE_API_KEY`가 없으면 전체 플레이리스트 동기화는 실패하지만, 곡 직접 추가와 공연 기록 기능은 사용할 수 있다.
 
 ## 5. 로컬 확인
 
@@ -100,6 +121,8 @@ npm run dev
 
 ## 6. 운영 메모
 
+- Google Sheets의 `songs` 시트가 비어 있고 `YOUTUBE_API_KEY`가 설정되어 있으면, 앱이 첫 곡 목록 조회 때 기본 플레이리스트의 영상 목록을 자동으로 가져온다.
+- 설정 화면의 `플레이리스트 동기화` 버튼은 `YOUTUBE_PLAYLIST_ID`의 모든 페이지를 순회해 전체 목록을 가져온다.
 - 앱에서 곡을 직접 추가하면 `songs`에 행이 추가된다.
 - 공연 기록을 저장하면 `performances`에 행이 추가된다.
 - `2부` 공연 기록이 있으면 앱이 읽기 시점에 `2부성가대` 자동 태그를 계산한다.

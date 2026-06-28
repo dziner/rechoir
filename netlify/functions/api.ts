@@ -2,10 +2,12 @@ import type { Handler, HandlerEvent, HandlerResponse } from '@netlify/functions'
 import { randomUUID } from 'node:crypto';
 import { checkPassword, corsHeaders } from './lib/auth';
 import {
-  getSongs, upsertSong, updateSongTags, getPerformances, appendPerformance,
+  getSongs, getAllSongs, upsertSong, updateSongTags, getPerformances, appendPerformance,
   type Song, type PerformanceLog,
 } from './lib/sheets';
 import { calcDerived } from './lib/derived';
+
+const DEFAULT_PLAYLIST_ID = 'PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7';
 
 function resp(statusCode: number, body: unknown): HandlerResponse {
   return {
@@ -134,6 +136,115 @@ function parsePerformance(value: unknown): Omit<PerformanceLog, 'id'> | null {
   };
 }
 
+function getPlaylistId(): string {
+  return process.env.YOUTUBE_PLAYLIST_ID ?? DEFAULT_PLAYLIST_ID;
+}
+
+function shouldAutoSyncPlaylist(): boolean {
+  return process.env.AUTO_SYNC_PLAYLIST_ON_EMPTY !== 'false';
+}
+
+type PlaylistSyncResult = {
+  added: number;
+  updated: number;
+  scanned: number;
+  playlistId: string;
+};
+
+async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
+  const youtubeApiKey = process.env.YOUTUBE_API_KEY;
+  const playlistId = getPlaylistId();
+
+  if (!youtubeApiKey) {
+    throw new Error('플레이리스트 전체 동기화에는 YOUTUBE_API_KEY가 필요합니다.');
+  }
+
+  const existing = await getAllSongs();
+  const existingById = new Map(existing.map(s => [s.id, s]));
+  let added = 0;
+  let updated = 0;
+  let scanned = 0;
+  let pageToken: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      part: 'snippet',
+      playlistId,
+      maxResults: '50',
+      key: youtubeApiKey,
+      ...(pageToken ? { pageToken } : {}),
+    });
+    const ytRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlistItems?${params}`,
+    );
+    if (!ytRes.ok) {
+      throw new Error(`YouTube API 오류 (${ytRes.status})`);
+    }
+    const data = await ytRes.json() as {
+      nextPageToken?: string;
+      items?: Array<{
+        snippet: {
+          resourceId?: { videoId?: string };
+          title: string;
+          publishedAt: string;
+          thumbnails?: { maxres?: { url: string }; high?: { url: string } };
+        };
+      }>;
+    };
+
+    for (const item of data.items ?? []) {
+      const videoId = item.snippet.resourceId?.videoId;
+      if (!videoId || videoId === 'Private video') continue;
+      scanned++;
+
+      const song: Song = {
+        id: videoId,
+        title: item.snippet.title,
+        youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+        thumbnail:
+          item.snippet.thumbnails?.maxres?.url ??
+          item.snippet.thumbnails?.high?.url ??
+          `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+        publishedAt: item.snippet.publishedAt.slice(0, 10),
+        active: true,
+        tags: {
+          theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
+        },
+      };
+
+      const existingSong = existingById.get(videoId);
+      if (existingSong) {
+        const refreshed = {
+          ...existingSong,
+          title: song.title,
+          youtubeUrl: song.youtubeUrl,
+          thumbnail: song.thumbnail,
+          publishedAt: song.publishedAt,
+        };
+        const changed =
+          refreshed.title !== existingSong.title ||
+          refreshed.youtubeUrl !== existingSong.youtubeUrl ||
+          refreshed.thumbnail !== existingSong.thumbnail ||
+          refreshed.publishedAt !== existingSong.publishedAt;
+
+        if (changed) {
+          await upsertSong(refreshed);
+          updated++;
+        }
+        continue;
+      }
+
+      await upsertSong(song);
+      existingById.set(videoId, song);
+      added++;
+    }
+
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return { added, updated, scanned, playlistId };
+}
+
 const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return resp(204, '');
 
@@ -154,7 +265,19 @@ const handler: Handler = async (event) => {
   if (resource === 'songs') {
     if (method === 'GET') {
       try {
-        const [songs, performances] = await Promise.all([getSongs(), getPerformances()]);
+        let [songs, performances] = await Promise.all([getSongs(), getPerformances()]);
+        if (!id && songs.length === 0 && shouldAutoSyncPlaylist()) {
+          const allSongs = await getAllSongs();
+          if (allSongs.length === 0) {
+            try {
+              await syncPlaylistIntoSheets();
+              songs = await getSongs();
+            } catch {
+              // Keep read-only listing available even if playlist sync is not configured yet.
+            }
+          }
+        }
+
         if (id) {
           const song = songs.find(s => s.id === id);
           if (!song) return err(404, '곡을 찾을 수 없습니다.');
@@ -263,94 +386,8 @@ const handler: Handler = async (event) => {
   if (resource === 'sync' && method === 'POST') {
     if (!checkPassword(String(body.password ?? ''))) return err(401, '권한 없음');
 
-    const youtubeApiKey = process.env.YOUTUBE_API_KEY;
-    const playlistId = process.env.YOUTUBE_PLAYLIST_ID ?? 'PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7';
-
-    if (!youtubeApiKey) {
-      return err(400, 'YOUTUBE_API_KEY가 설정되지 않았습니다. 수동으로 곡을 추가해 주세요.');
-    }
-
     try {
-      const existing = await getSongs();
-      const existingById = new Map(existing.map(s => [s.id, s]));
-      let added = 0;
-      let updated = 0;
-      let pageToken: string | undefined;
-
-      do {
-        const params = new URLSearchParams({
-          part: 'snippet',
-          playlistId,
-          maxResults: '50',
-          key: youtubeApiKey,
-          ...(pageToken ? { pageToken } : {}),
-        });
-        const ytRes = await fetch(
-          `https://www.googleapis.com/youtube/v3/playlistItems?${params}`,
-        );
-        if (!ytRes.ok) {
-          throw new Error(`YouTube API 오류 (${ytRes.status})`);
-        }
-        const data = await ytRes.json() as {
-          nextPageToken?: string;
-          items?: Array<{
-            snippet: {
-              resourceId?: { videoId?: string };
-              title: string;
-              publishedAt: string;
-              thumbnails?: { maxres?: { url: string }; high?: { url: string } };
-            };
-          }>;
-        };
-
-        for (const item of data.items ?? []) {
-          const videoId = item.snippet.resourceId?.videoId;
-          if (!videoId || videoId === 'Private video') continue;
-          const song: Song = {
-            id: videoId,
-            title: item.snippet.title,
-            youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-            thumbnail:
-              item.snippet.thumbnails?.maxres?.url ??
-              item.snippet.thumbnails?.high?.url ??
-              `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-            publishedAt: item.snippet.publishedAt.slice(0, 10),
-            active: true,
-            tags: {
-              theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
-            },
-          };
-          const existingSong = existingById.get(videoId);
-          if (existingSong) {
-            const refreshed = {
-              ...existingSong,
-              title: song.title,
-              youtubeUrl: song.youtubeUrl,
-              thumbnail: song.thumbnail,
-              publishedAt: song.publishedAt,
-            };
-            const changed =
-              refreshed.title !== existingSong.title ||
-              refreshed.youtubeUrl !== existingSong.youtubeUrl ||
-              refreshed.thumbnail !== existingSong.thumbnail ||
-              refreshed.publishedAt !== existingSong.publishedAt;
-
-            if (changed) {
-              await upsertSong(refreshed);
-              updated++;
-            }
-            continue;
-          }
-
-          await upsertSong(song);
-          existingById.set(videoId, song);
-          added++;
-        }
-
-        pageToken = data.nextPageToken;
-      } while (pageToken);
-
-      return ok({ added, updated });
+      return ok(await syncPlaylistIntoSheets());
     } catch (e) {
       return err(500, (e as Error).message);
     }

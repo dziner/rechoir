@@ -64,22 +64,39 @@ export async function getSongs(): Promise<Song[]> {
     range: 'songs!A2:K',
   });
   const rows = res.data.values ?? [];
+  return rowsToSongs(rows).filter(song => song.active);
+}
+
+export async function getAllSongs(): Promise<Song[]> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: getSheetId(),
+    range: 'songs!A2:K',
+  });
+  return rowsToSongs(res.data.values ?? []);
+}
+
+function cell(row: unknown[], index: number): string {
+  return String(row[index] ?? '');
+}
+
+function rowsToSongs(rows: unknown[][]): Song[] {
   return rows
-    .filter(r => r[0] && r[5] !== 'FALSE')
+    .filter(r => r[0])
     .map(r => ({
-      id: r[0] ?? '',
-      title: r[1] ?? '',
-      youtubeUrl: r[2] ?? `https://www.youtube.com/watch?v=${r[0]}`,
+      id: cell(r, 0),
+      title: cell(r, 1),
+      youtubeUrl: cell(r, 2) || `https://www.youtube.com/watch?v=${cell(r, 0)}`,
       thumbnail:
-        r[3] ?? `https://img.youtube.com/vi/${r[0]}/maxresdefault.jpg`,
-      publishedAt: r[4] ?? '',
-      active: r[5] !== 'FALSE',
+        cell(r, 3) || `https://img.youtube.com/vi/${cell(r, 0)}/maxresdefault.jpg`,
+      publishedAt: cell(r, 4),
+      active: cell(r, 5) !== 'FALSE',
       tags: {
-        theme: csvToArray(r[6] ?? ''),
-        tempo: r[7] ?? 'mid',
-        mood: csvToArray(r[8] ?? ''),
-        strings: r[9] === 'TRUE',
-        difficulty: r[10] ?? 'mid',
+        theme: csvToArray(cell(r, 6)),
+        tempo: cell(r, 7) || 'mid',
+        mood: csvToArray(cell(r, 8)),
+        strings: cell(r, 9) === 'TRUE',
+        difficulty: cell(r, 10) || 'mid',
         auto: [],
       },
     }));
