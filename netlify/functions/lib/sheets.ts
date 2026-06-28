@@ -211,13 +211,16 @@ function rowsToSongs(rows: unknown[][]): Song[] {
 export async function upsertSong(song: Song): Promise<void> {
   const { sheets, sheetId } = await getSheetContext();
 
-  // Find existing row
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'songs!A:A',
+    range: 'songs!A2:K',
   });
-  const ids = (res.data.values ?? []).map(r => r[0]);
-  const rowIndex = ids.indexOf(song.id);
+  const rows = res.data.values ?? [];
+  const existingRowIndex = rows.findIndex(row => cell(row, 0) === song.id);
+  const firstEmptyRowIndex = rows.findIndex(row => !cell(row, 0));
+  const targetRow = existingRowIndex >= 0
+    ? existingRowIndex + 2
+    : (firstEmptyRowIndex >= 0 ? firstEmptyRowIndex + 2 : rows.length + 2);
 
   const values = [[
     song.id,
@@ -233,23 +236,12 @@ export async function upsertSong(song: Song): Promise<void> {
     song.tags.difficulty,
   ]];
 
-  if (rowIndex <= 0) {
-    // Append new row
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: 'songs!A:K',
-      valueInputOption: 'RAW',
-      requestBody: { values },
-    });
-  } else {
-    // Update existing row
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: sheetId,
-      range: `songs!A${rowIndex + 1}:K${rowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values },
-    });
-  }
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `songs!A${targetRow}:K${targetRow}`,
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  });
 }
 
 export async function updateSongTags(

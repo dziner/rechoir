@@ -8,13 +8,17 @@
 - [ ] P1 공개 배포 전 CORS/rate limit 결정: `Access-Control-Allow-Origin: *` 유지 가능 범위와 비밀번호 시도 제한 방식 검토
 - [ ] P1 배포 환경 확인: Netlify/CI Node 버전이 `package.json`의 `>=22.12` 조건을 만족하는지 확인
 - [ ] P1 전체 플레이리스트 동기화 사용 시 Netlify에 `YOUTUBE_API_KEY` 설정 확인
-- [ ] P1 배포 후 Google Sheet `songs` 행 생성 여부 확인
 - [ ] P2 테스트 보강 후보: `calcDerived`, `scoreSongs`, API validator 단위 테스트 추가
 - [ ] P2 설정 공유 정책 확인: 추천 가중치/쿨다운이 사용자별 localStorage인지, 운영자 공용 Sheets 저장인지 결정
 - [ ] P3 문서 보강 후보: README가 필요하면 Google Sheets 컬럼 구조, 환경변수, 배포 절차를 짧게 추가
 
 ## 완료
 
+- [x] done P1 2026-06-28 Google Sheet 연결 실측 확인: 대상 문서는 `rechoir_DB`, `songs` 탭 `sheetId=1086318606`
+- [x] done P1 2026-06-28 Google Sheet 행 위치 복구: Apps Script 체크박스 값 때문에 1001행부터 들어간 183곡을 2행부터 보이도록 압축 정리
+- [x] done P1 2026-06-28 Sheets upsert 보강: `values.append` 대신 첫 빈 `id` 행에 직접 `update`하여 빈 체크박스 행 뒤로 밀리지 않도록 변경
+- [x] done P1 2026-06-28 Apps Script 보강: `F2:F`, `J2:J` 전체 체크박스 생성을 중단하고 실제 데이터 행에만 체크박스 적용
+- [x] done P1 2026-06-28 영상 제목 날짜 파서 보강: 실제 플레이리스트 형식인 `YYYY MM DD`도 공연일로 추출
 - [x] done P1 2026-06-28 Google Sheets DB 대상 반영: `GOOGLE_SHEET_ID=1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw`
 - [x] done P1 2026-06-28 플레이리스트 전체 동기화 공통화: YouTube Data API pagination을 `syncPlaylistIntoSheets()`로 분리
 - [x] done P1 2026-06-28 빈 DB 자동 동기화 추가: `songs` 시트가 완전히 비어 있으면 첫 목록 조회에서 기본 플레이리스트 동기화 시도
@@ -68,3 +72,6 @@
 - 2026-06-28 공연 통계 보정: `calcDerived`가 영상 제목의 날짜를 공연일 후보로 합산하도록 변경. 지원 형식은 `YYYY.MM.DD`, `YYYY-MM-DD`, `YYYY/MM/DD`, `YYYY년 M월 D일`.
 - 2026-06-28 Google Sheets 연동 보강: 비어 있는 새 스프레드시트여도 API가 `songs`/`performances` 시트와 헤더를 자동 생성하도록 변경.
 - 2026-06-28 사용자의 요청에 따라 `SYNC_PLAYLIST_ON_READ=true` 기본값으로 사이트 진입/새로고침 시마다 Google Sheet와 YouTube playlist를 동기화하도록 변경.
+- 2026-06-28 실측 결과: 지정 스프레드시트는 맞고 `songs` 탭에 183곡이 존재했으나, Apps Script가 만든 빈 체크박스 값 때문에 API append가 1001행부터 데이터를 추가해 상단이 비어 보였음.
+- 2026-06-28 복구 작업: `songs`의 ID 있는 183개 행을 2행부터 재배치하고, 185행 이하의 이전 위치/빈 체크박스 값을 정리.
+- 2026-06-28 재발 방지: 서버 upsert를 첫 빈 `id` 행 직접 쓰기로 변경하고, Apps Script 체크박스 적용 범위를 실제 데이터 행으로 제한.

@@ -79,10 +79,9 @@ function setupSongsSheet_(sheet) {
   sheet.getRange('A:A').setNumberFormat('@');
   sheet.getRange('B:D').setNumberFormat('@');
   sheet.getRange('E:E').setNumberFormat('yyyy-mm-dd');
-  sheet.getRange('F2:F').insertCheckboxes();
   sheet.getRange('G:G').setNumberFormat('@');
   sheet.getRange('I:I').setNumberFormat('@');
-  sheet.getRange('J2:J').insertCheckboxes();
+  applySongCheckboxes_(sheet);
   sheet.getRange('H2:H').setDataValidation(listRule_(['slow', 'mid', 'fast']));
   sheet.getRange('K2:K').setDataValidation(listRule_(['low', 'mid', 'high']));
   sheet.setColumnWidths(1, 1, 130);
@@ -93,6 +92,26 @@ function setupSongsSheet_(sheet) {
   sheet.setColumnWidths(7, 3, 160);
   sheet.setColumnWidths(10, 2, 110);
   ensureFilter_(sheet, SONG_HEADERS.length);
+}
+
+function applySongCheckboxes_(sheet) {
+  sheet.getRange('F2:F').clearDataValidations();
+  sheet.getRange('J2:J').clearDataValidations();
+
+  const lastDataRow = getLastDataRowById_(sheet);
+  if (lastDataRow < 2) return;
+
+  sheet.getRange(2, 6, lastDataRow - 1, 1).insertCheckboxes();
+  sheet.getRange(2, 10, lastDataRow - 1, 1).insertCheckboxes();
+}
+
+function getLastDataRowById_(sheet) {
+  const maxRows = Math.max(sheet.getLastRow(), 2);
+  const ids = sheet.getRange(2, 1, maxRows - 1, 1).getValues();
+  for (let i = ids.length - 1; i >= 0; i--) {
+    if (ids[i][0]) return i + 2;
+  }
+  return 1;
 }
 
 function setupPerformancesSheet_(sheet) {
