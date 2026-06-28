@@ -186,6 +186,15 @@ function cell(row: unknown[], index: number): string {
   return String(row[index] ?? '');
 }
 
+function booleanCell(row: unknown[], index: number, defaultValue: boolean): boolean {
+  const value = row[index];
+  if (typeof value === 'boolean') return value;
+
+  const normalized = String(value ?? '').trim().toUpperCase();
+  if (!normalized) return defaultValue;
+  return normalized === 'TRUE';
+}
+
 function rowsToSongs(rows: unknown[][]): Song[] {
   return rows
     .filter(r => r[0])
@@ -196,12 +205,12 @@ function rowsToSongs(rows: unknown[][]): Song[] {
       thumbnail:
         cell(r, 3) || `https://img.youtube.com/vi/${cell(r, 0)}/maxresdefault.jpg`,
       publishedAt: cell(r, 4),
-      active: cell(r, 5) !== 'FALSE',
+      active: booleanCell(r, 5, true),
       tags: {
         theme: csvToArray(cell(r, 6)),
         tempo: cell(r, 7) || 'mid',
         mood: csvToArray(cell(r, 8)),
-        strings: cell(r, 9) === 'TRUE',
+        strings: booleanCell(r, 9, false),
         difficulty: cell(r, 10) || 'mid',
         auto: [],
       },
@@ -228,11 +237,11 @@ export async function upsertSong(song: Song): Promise<void> {
     song.youtubeUrl,
     song.thumbnail,
     song.publishedAt,
-    song.active ? 'TRUE' : 'FALSE',
+    song.active,
     arrayToCsv(song.tags.theme),
     song.tags.tempo,
     arrayToCsv(song.tags.mood),
-    song.tags.strings ? 'TRUE' : 'FALSE',
+    song.tags.strings,
     song.tags.difficulty,
   ]];
 
@@ -260,11 +269,11 @@ export async function updateSongTags(
 
   const existingRow = rows[rowIndex];
   const merged = {
-    theme: tags.theme ?? csvToArray(existingRow[6] ?? ''),
-    tempo: tags.tempo ?? existingRow[7] ?? 'mid',
-    mood: tags.mood ?? csvToArray(existingRow[8] ?? ''),
-    strings: tags.strings !== undefined ? tags.strings : existingRow[9] === 'TRUE',
-    difficulty: tags.difficulty ?? existingRow[10] ?? 'mid',
+    theme: tags.theme ?? csvToArray(cell(existingRow, 6)),
+    tempo: tags.tempo ?? (cell(existingRow, 7) || 'mid'),
+    mood: tags.mood ?? csvToArray(cell(existingRow, 8)),
+    strings: tags.strings !== undefined ? tags.strings : booleanCell(existingRow, 9, false),
+    difficulty: tags.difficulty ?? (cell(existingRow, 10) || 'mid'),
   };
 
   await sheets.spreadsheets.values.update({
@@ -276,7 +285,7 @@ export async function updateSongTags(
         arrayToCsv(merged.theme),
         merged.tempo,
         arrayToCsv(merged.mood),
-        merged.strings ? 'TRUE' : 'FALSE',
+        merged.strings,
         merged.difficulty,
       ]],
     },

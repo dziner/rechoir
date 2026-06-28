@@ -101,8 +101,23 @@ function applySongCheckboxes_(sheet) {
   const lastDataRow = getLastDataRowById_(sheet);
   if (lastDataRow < 2) return;
 
+  normalizeBooleanColumn_(sheet, 6, lastDataRow, true);
+  normalizeBooleanColumn_(sheet, 10, lastDataRow, false);
   sheet.getRange(2, 6, lastDataRow - 1, 1).insertCheckboxes();
   sheet.getRange(2, 10, lastDataRow - 1, 1).insertCheckboxes();
+}
+
+function normalizeBooleanColumn_(sheet, column, lastDataRow, defaultValue) {
+  const range = sheet.getRange(2, column, lastDataRow - 1, 1);
+  const values = range.getValues().map(row => [toBoolean_(row[0], defaultValue)]);
+  range.setValues(values);
+}
+
+function toBoolean_(value, defaultValue) {
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value || '').trim().toUpperCase();
+  if (!normalized) return defaultValue;
+  return normalized === 'TRUE';
 }
 
 function getLastDataRowById_(sheet) {

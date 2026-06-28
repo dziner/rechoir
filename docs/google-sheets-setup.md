@@ -18,11 +18,11 @@ Rechoir 앱은 정확히 아래 두 시트 이름을 사용한다.
 | C | `youtubeUrl` | yes | `https://www.youtube.com/watch?v=M7lc1UVf-VE` | 영상 URL |
 | D | `thumbnail` | yes | `https://img.youtube.com/vi/M7lc1UVf-VE/maxresdefault.jpg` | 썸네일 URL |
 | E | `publishedAt` | yes | `2026-06-28` | `yyyy-mm-dd` 형식 |
-| F | `active` | yes | `TRUE` | `FALSE`면 앱 목록에서 제외 |
+| F | `active` | yes | 체크됨 | checkbox boolean. 체크 해제면 앱 목록에서 제외 |
 | G | `theme` | no | `찬양,감사` | 쉼표로 구분 |
 | H | `tempo` | yes | `mid` | `slow`, `mid`, `fast` |
 | I | `mood` | no | `경건,밝음` | 쉼표로 구분 |
-| J | `strings` | yes | `FALSE` | 현악기 합주 여부 |
+| J | `strings` | yes | 체크 해제 | checkbox boolean. 현악기 합주 여부 |
 | K | `difficulty` | yes | `mid` | `low`, `mid`, `high` |
 
 ### `performances`
@@ -42,7 +42,7 @@ Netlify Function은 `songs`와 `performances` 시트가 없으면 자동으로 �
 
 Apps Script는 앱 런타임이 아니다. 체크박스, 드롭다운, 필터, 컬럼 너비 같은 스프레드시트 편집 편의 서식을 적용하는 선택 보조 도구다. 기존 데이터는 삭제하지 않는다.
 
-주의: 체크박스는 실제 곡 데이터가 있는 행에만 적용한다. 빈 전체 컬럼에 체크박스를 미리 깔면 Google Sheets API가 빈 행을 데이터 행으로 오해해 새 곡이 1000행 아래에 붙을 수 있다.
+주의: 체크박스는 실제 곡 데이터가 있는 행에만 적용한다. 빈 전체 컬럼에 체크박스를 미리 깔면 Google Sheets API가 빈 행을 데이터 행으로 오해해 새 곡이 1000행 아래에 붙을 수 있다. 또한 `active`, `strings`에는 텍스트 `"TRUE"`/`"FALSE"`가 아니라 체크박스의 boolean 값이 들어가야 한다.
 
 1. 스프레드시트를 연다.
 2. 메뉴에서 `Extensions > Apps Script`를 연다.
@@ -150,3 +150,13 @@ npm run dev
 4. 2행부터 비어 있는데 아래쪽 1000행 근처에 데이터가 있다면, 예전 Apps Script가 만든 빈 체크박스 행 때문에 append 위치가 밀린 상태다.
 
 2026-06-28 현재 라이브 시트는 183개 곡을 `songs!A2:K184`로 압축 정리했다. 서버도 새 곡을 `append`하지 않고 첫 빈 `id` 행에 직접 쓰도록 변경했기 때문에 같은 현상이 반복되지 않아야 한다.
+
+### `active` 또는 `strings`에 Invalid 경고가 뜨는 경우
+
+원인:
+
+- 해당 열은 Google Sheets checkbox validation이다.
+- 텍스트 `"TRUE"`/`"FALSE"`를 직접 입력하면 화면에는 TRUE/FALSE처럼 보이지만 validation 규칙에는 맞지 않는다.
+- 서버와 Apps Script는 2026-06-28 이후 boolean 값으로 쓰도록 변경했다.
+
+수동으로 고칠 때는 셀에 텍스트를 타이핑하지 말고 체크박스를 클릭한다. 기존 라이브 시트의 `songs!F2:F184`, `songs!J2:J184`는 boolean 값으로 변환 완료했다.

@@ -19,6 +19,7 @@
 - [x] done P1 2026-06-28 Sheets upsert 보강: `values.append` 대신 첫 빈 `id` 행에 직접 `update`하여 빈 체크박스 행 뒤로 밀리지 않도록 변경
 - [x] done P1 2026-06-28 Apps Script 보강: `F2:F`, `J2:J` 전체 체크박스 생성을 중단하고 실제 데이터 행에만 체크박스 적용
 - [x] done P1 2026-06-28 영상 제목 날짜 파서 보강: 실제 플레이리스트 형식인 `YYYY MM DD`도 공연일로 추출
+- [x] done P1 2026-06-28 체크박스 validation 타입 복구: `active`/`strings`를 문자열 `TRUE`/`FALSE`가 아니라 boolean 값으로 저장하도록 변경하고 라이브 시트 183행 변환
 - [x] done P1 2026-06-28 Google Sheets DB 대상 반영: `GOOGLE_SHEET_ID=1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw`
 - [x] done P1 2026-06-28 플레이리스트 전체 동기화 공통화: YouTube Data API pagination을 `syncPlaylistIntoSheets()`로 분리
 - [x] done P1 2026-06-28 빈 DB 자동 동기화 추가: `songs` 시트가 완전히 비어 있으면 첫 목록 조회에서 기본 플레이리스트 동기화 시도
@@ -75,3 +76,4 @@
 - 2026-06-28 실측 결과: 지정 스프레드시트는 맞고 `songs` 탭에 183곡이 존재했으나, Apps Script가 만든 빈 체크박스 값 때문에 API append가 1001행부터 데이터를 추가해 상단이 비어 보였음.
 - 2026-06-28 복구 작업: `songs`의 ID 있는 183개 행을 2행부터 재배치하고, 185행 이하의 이전 위치/빈 체크박스 값을 정리.
 - 2026-06-28 재발 방지: 서버 upsert를 첫 빈 `id` 행 직접 쓰기로 변경하고, Apps Script 체크박스 적용 범위를 실제 데이터 행으로 제한.
+- 2026-06-28 체크박스 경고 원인: `active`, `strings` 열은 checkbox validation이지만 값이 문자열 `"TRUE"`/`"FALSE"`라 Invalid가 표시됨. 서버 쓰기와 Apps Script를 boolean 저장으로 변경하고 라이브 `songs!F2:F184`, `songs!J2:J184`를 변환.
