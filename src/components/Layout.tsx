@@ -24,7 +24,7 @@ export function Layout({ children }: LayoutProps) {
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-indigo-700">rechoir</span>
+            <span className="text-xl font-bold text-indigo-700">REchoir</span>
             <span className="hidden text-xs text-gray-400 sm:block">산위의마을교회 성가대</span>
           </Link>
           {authed && (

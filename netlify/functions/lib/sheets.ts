@@ -1,4 +1,5 @@
 import { google, type sheets_v4 } from 'googleapis';
+import { parsePlaylistTitle } from './playlist';
 
 export interface Song {
   id: string;
@@ -230,13 +231,21 @@ export async function upsertSong(song: Song): Promise<void> {
   });
   const rows = res.data.values ?? [];
   const existingRowIndex = rows.findIndex(row => cell(row, 0) === song.id);
+  const songKey = parsePlaylistTitle(song.title).canonicalKey;
+  const canonicalRowIndex = existingRowIndex >= 0
+    ? -1
+    : rows.findIndex(row => cell(row, 0) && parsePlaylistTitle(cell(row, 1)).canonicalKey === songKey);
   const firstEmptyRowIndex = rows.findIndex(row => !cell(row, 0));
-  const targetRow = existingRowIndex >= 0
-    ? existingRowIndex + 2
+  const targetRowIndex = existingRowIndex >= 0
+    ? existingRowIndex
+    : canonicalRowIndex;
+  const targetRow = targetRowIndex >= 0
+    ? targetRowIndex + 2
     : (firstEmptyRowIndex >= 0 ? firstEmptyRowIndex + 2 : rows.length + 2);
+  const existingId = targetRowIndex >= 0 ? cell(rows[targetRowIndex], 0) : '';
 
   const values = [[
-    song.id,
+    existingId || song.id,
     song.title,
     song.youtubeUrl,
     song.thumbnail,

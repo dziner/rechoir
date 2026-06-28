@@ -28,6 +28,30 @@ function readinessScore(difficulty: Difficulty): number {
   return map[difficulty];
 }
 
+function difficultyRank(difficulty: Difficulty): number {
+  const map: Record<Difficulty, number> = { low: 0, mid: 1, high: 2 };
+  return map[difficulty];
+}
+
+function compareRecommendedSongs(a: RecommendedSong, b: RecommendedSong): number {
+  if (a.eligible && !b.eligible) return -1;
+  if (!a.eligible && b.eligible) return 1;
+
+  const aWeeks = a.derived.weeksSinceLast ?? -1;
+  const bWeeks = b.derived.weeksSinceLast ?? -1;
+  if (aWeeks !== bWeeks) return bWeeks - aWeeks;
+
+  if (a.derived.encoreCount !== b.derived.encoreCount) {
+    return a.derived.encoreCount - b.derived.encoreCount;
+  }
+
+  const difficultyDiff = difficultyRank(a.tags.difficulty) - difficultyRank(b.tags.difficulty);
+  if (difficultyDiff !== 0) return difficultyDiff;
+
+  if (a.score !== b.score) return b.score - a.score;
+  return a.title.localeCompare(b.title, 'ko');
+}
+
 function reasonText(
   song: SongWithDerived,
   filterTheme: string[],
@@ -132,9 +156,5 @@ export function scoreSongs(
       } as RecommendedSong;
     })
     .filter((s): s is RecommendedSong => s !== null)
-    .sort((a, b) => {
-      if (a.eligible && !b.eligible) return -1;
-      if (!a.eligible && b.eligible) return 1;
-      return b.score - a.score;
-    });
+    .sort(compareRecommendedSongs);
 }

@@ -25,7 +25,7 @@ const PERFORMANCE_HEADERS = [
 
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('Rechoir')
+    .createMenu('REchoir')
     .addItem('DB 시트 초기화/검증', 'setupRechoirDatabase')
     .addItem('헤더만 다시 적용', 'applyRechoirHeaders')
     .addItem('현재 DB 상태 보기', 'showRechoirStatus')
@@ -42,7 +42,7 @@ function setupRechoirDatabase() {
   removeDefaultSheetIfEmpty_(ss);
 
   SpreadsheetApp.flush();
-  SpreadsheetApp.getUi().alert('Rechoir DB 시트 초기화가 완료되었습니다.');
+  SpreadsheetApp.getUi().alert('REchoir DB 시트 초기화가 완료되었습니다.');
 }
 
 function applyRechoirHeaders() {
@@ -51,7 +51,7 @@ function applyRechoirHeaders() {
   setupPerformancesSheet_(ensureSheet_(ss, 'performances', PERFORMANCE_HEADERS.length));
 
   SpreadsheetApp.flush();
-  SpreadsheetApp.getUi().alert('Rechoir 헤더와 서식이 다시 적용되었습니다.');
+  SpreadsheetApp.getUi().alert('REchoir 헤더와 서식이 다시 적용되었습니다.');
 }
 
 function showRechoirStatus() {
@@ -67,7 +67,7 @@ function showRechoirStatus() {
       `songs rows: ${songRows}`,
       `performances rows: ${performanceRows}`,
       '',
-      'Rechoir 앱은 songs와 performances 시트를 사용합니다.',
+      'REchoir 앱은 songs와 performances 시트를 사용합니다.',
     ].join('\n'),
   );
 }

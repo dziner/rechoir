@@ -1,13 +1,13 @@
 # Google Sheets DB Setup
 
-Rechoir는 Google Sheets를 간단한 운영 DB로 사용한다. 이 문서는 아래 스프레드시트를 Rechoir DB로 쓰기 위한 설정 절차다.
+REchoir는 Google Sheets를 간단한 운영 DB로 사용한다. 이 문서는 아래 스프레드시트를 REchoir DB로 쓰기 위한 설정 절차다.
 
 - Spreadsheet URL: https://docs.google.com/spreadsheets/d/1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw/edit?usp=sharing
 - Spreadsheet ID: `1Z5JQhnLf8iF6XgJxnbJ6L7pYEyngFV0nU5elABw6eSw`
 
 ## 1. 시트 스키마
 
-Rechoir 앱은 정확히 아래 두 시트 이름을 사용한다.
+REchoir 앱은 정확히 아래 두 시트 이름을 사용한다.
 
 ### `songs`
 
@@ -50,8 +50,8 @@ Apps Script는 앱 런타임이 아니다. 체크박스, 드롭다운, 필터, �
 4. 저장한다.
 5. 함수 선택 드롭다운에서 `setupRechoirDatabase`를 선택하고 `Run`을 누른다.
 6. 최초 1회 권한 승인을 진행한다.
-7. 스프레드시트로 돌아와 새로고침하면 `Rechoir` 메뉴가 생긴다.
-8. 이후에는 `Rechoir > DB 시트 초기화/검증`으로 헤더/서식을 다시 적용할 수 있다.
+7. 스프레드시트로 돌아와 새로고침하면 `REchoir` 메뉴가 생긴다.
+8. 이후에는 `REchoir > DB 시트 초기화/검증`으로 헤더/서식을 다시 적용할 수 있다.
 
 앱이 자동 생성하는 최소 구조만으로 운영할 수도 있지만, 사람이 Google Sheet를 직접 편집할 계획이면 Apps Script를 한 번 실행해두는 것을 권장한다.
 
@@ -66,7 +66,7 @@ Netlify Function은 Apps Script가 아니라 Google Sheets API로 시트를 읽�
 3. `IAM & Admin > Service Accounts`에서 서비스 계정을 만든다.
 4. 서비스 계정의 `Keys` 탭에서 `Add key > Create new key > JSON`을 선택해 JSON 키를 내려받는다.
 5. JSON 안의 `client_email` 값을 복사한다.
-6. Rechoir 스프레드시트의 `Share` 버튼을 누르고, 위 `client_email`을 `Editor` 권한으로 초대한다.
+6. REchoir 스프레드시트의 `Share` 버튼을 누르고, 위 `client_email`을 `Editor` 권한으로 초대한다.
 7. 내려받은 JSON 파일 내용 전체를 한 줄 JSON 문자열로 환경변수 `GOOGLE_SERVICE_ACCOUNT_JSON`에 넣는다.
 
 로컬에 받은 키 파일이 예를 들어 `docs/boxwood-sector-491202-h1-d135bd9ef92d.json`라면, 아래 명령으로 Netlify UI에 붙여넣을 값을 클립보드에 복사할 수 있다.
@@ -131,7 +131,7 @@ npm run dev
 - `SYNC_PLAYLIST_ON_READ=true`와 `YOUTUBE_API_KEY`가 설정되어 있으면, 앱이 곡 목록을 읽을 때마다 먼저 기본 플레이리스트의 영상 목록을 Google Sheets에 반영한다.
 - 설정 화면의 `플레이리스트 동기화` 버튼은 `YOUTUBE_PLAYLIST_ID`의 모든 페이지를 순회해 전체 목록을 가져온다.
 - 플레이리스트에서 가져온 영상은 제목 안의 날짜를 기본 공연일로 사용한다. 지원 형식은 `2025.04.23`, `2025-04-23`, `2025/04/23`, `2025 04 23`, `2025년 4월 23일`이다.
-- 플레이리스트 동기화는 YouTube 영상마다 곡을 만들지 않는다. 제목에서 날짜, `콰이어`, `1부`/`2부`, 일부 예배/행사 표기를 제거한 canonical title이 같으면 같은 곡으로 병합한다.
+- 플레이리스트 동기화는 YouTube 영상마다 곡을 만들지 않는다. 제목에서 날짜, `콰이어`, `1부`/`2부`, 일부 예배/행사 표기를 제거한 canonical title이 같으면 같은 곡으로 병합한다. canonical key 비교는 띄어쓰기와 주요 구두점을 무시한다.
 - 같은 곡을 같은 날짜에 1부와 2부 모두 부른 경우 `performances`에는 `services=1부,2부`인 한 행만 저장한다.
 - 제목에서 날짜가 추출되면 `performances`에 날짜별 기록을 저장하고, 마지막 공연은 `27주 전 (2025.04.23)`처럼 표시한다.
 - 앱에서 곡을 직접 추가하면 `songs`에 행이 추가된다.
@@ -151,7 +151,7 @@ npm run dev
 3. 필터가 켜져 있다면 필터 조건을 모두 해제한다.
 4. 2행부터 비어 있는데 아래쪽 1000행 근처에 데이터가 있다면, 예전 Apps Script가 만든 빈 체크박스 행 때문에 append 위치가 밀린 상태다.
 
-2026-06-28 현재 라이브 시트는 183개 영상 행을 먼저 `songs!A2:K184`로 복구했고, 이후 PRD 기준에 따라 같은 곡 중복을 병합해 `songs` 140곡과 `performances` 168개 날짜별 기록으로 정리했다. 서버도 새 곡을 `append`하지 않고 첫 빈 `id` 행에 직접 쓰도록 변경했기 때문에 같은 현상이 반복되지 않아야 한다.
+2026-06-28 현재 라이브 시트는 183개 영상 행을 먼저 `songs!A2:K184`로 복구했고, 이후 PRD 기준에 따라 같은 곡 중복을 병합해 `songs` 139곡과 `performances` 167개 날짜별 기록으로 정리했다. 서버도 새 곡을 `append`하지 않고 첫 빈 `id` 행에 직접 쓰도록 변경했기 때문에 같은 현상이 반복되지 않아야 한다.
 
 ### `active` 또는 `strings`에 Invalid 경고가 뜨는 경우
 
