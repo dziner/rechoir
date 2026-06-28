@@ -10,7 +10,7 @@ import { DEFAULT_FILTERS, DEFAULT_SETTINGS } from '../types';
 export function Dashboard() {
   const [filters, setFilters] = useState<RecommendFilters>(DEFAULT_FILTERS);
 
-  const { data: songs = [], isLoading: songsLoading } = useQuery({
+  const { data: songs = [], isLoading: songsLoading, error: songsError } = useQuery({
     queryKey: ['songs'],
     queryFn: fetchSongs,
   });
@@ -46,6 +46,12 @@ export function Dashboard() {
       {isDemo && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
           🎭 데모 모드로 실행 중입니다. 실제 데이터를 사용하려면 Google Sheets를 설정하세요.
+        </div>
+      )}
+
+      {songsError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          데이터를 불러오지 못했습니다: {(songsError as Error).message}
         </div>
       )}
 

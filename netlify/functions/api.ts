@@ -12,7 +12,10 @@ const DEFAULT_PLAYLIST_ID = 'PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7';
 function resp(statusCode: number, body: unknown): HandlerResponse {
   return {
     statusCode,
-    headers: corsHeaders(),
+    headers: {
+      ...corsHeaders(),
+      'Cache-Control': 'no-store',
+    },
     body: JSON.stringify(body),
   };
 }
@@ -140,8 +143,10 @@ function getPlaylistId(): string {
   return process.env.YOUTUBE_PLAYLIST_ID ?? DEFAULT_PLAYLIST_ID;
 }
 
-function shouldAutoSyncPlaylist(): boolean {
-  return process.env.AUTO_SYNC_PLAYLIST_ON_EMPTY !== 'false';
+function shouldSyncPlaylistOnRead(): boolean {
+  const configured = process.env.SYNC_PLAYLIST_ON_READ
+    ?? process.env.AUTO_SYNC_PLAYLIST_ON_EMPTY;
+  return configured !== 'false';
 }
 
 type PlaylistSyncResult = {
@@ -265,18 +270,19 @@ const handler: Handler = async (event) => {
   if (resource === 'songs') {
     if (method === 'GET') {
       try {
-        let [songs, performances] = await Promise.all([getSongs(), getPerformances()]);
-        if (!id && songs.length === 0 && shouldAutoSyncPlaylist()) {
-          const allSongs = await getAllSongs();
-          if (allSongs.length === 0) {
-            try {
-              await syncPlaylistIntoSheets();
-              songs = await getSongs();
-            } catch {
-              // Keep read-only listing available even if playlist sync is not configured yet.
-            }
+        const performancesPromise = getPerformances();
+        let songs: Song[] | null = null;
+        if (shouldSyncPlaylistOnRead()) {
+          try {
+            await syncPlaylistIntoSheets();
+          } catch (e) {
+            const existingSongs = await getSongs();
+            if (existingSongs.length === 0) throw e;
+            songs = existingSongs;
           }
         }
+        songs ??= await getSongs();
+        const performances = await performancesPromise;
 
         if (id) {
           const song = songs.find(s => s.id === id);

@@ -99,7 +99,7 @@ GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","privat
 EDIT_PASSWORD=운영자가_정한_편집_비밀번호
 YOUTUBE_API_KEY=선택값
 YOUTUBE_PLAYLIST_ID=PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7
-AUTO_SYNC_PLAYLIST_ON_EMPTY=true
+SYNC_PLAYLIST_ON_READ=true
 VITE_DEMO_MODE=false
 ```
 
@@ -109,7 +109,7 @@ VITE_DEMO_MODE=false
 - Netlify에 넣을 때 JSON 줄바꿈이 깨지면 `private_key`의 줄바꿈이 `\n`으로 유지되는지 확인한다.
 - 플레이리스트의 전체 영상 목록을 가져오려면 `YOUTUBE_API_KEY`가 필요하다.
 - `YOUTUBE_PLAYLIST_ID`를 생략하면 기본값 `PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7`를 사용한다.
-- `AUTO_SYNC_PLAYLIST_ON_EMPTY=true`이면 `songs` 시트가 완전히 비어 있을 때 첫 곡 목록 조회에서 플레이리스트 전체 동기화를 한 번 시도한다.
+- `SYNC_PLAYLIST_ON_READ=true`이면 사이트 진입/새로고침으로 곡 목록을 읽을 때마다 플레이리스트 전체 동기화를 먼저 시도한다.
 - `YOUTUBE_API_KEY`가 없으면 전체 플레이리스트 동기화는 실패하지만, 곡 직접 추가와 공연 기록 기능은 사용할 수 있다.
 
 ## 5. 로컬 확인
@@ -126,7 +126,7 @@ npm run dev
 ## 6. 운영 메모
 
 - 빈 스프레드시트라면 배포된 앱을 한 번 열거나 설정 화면에서 `플레이리스트 동기화`를 누르면 서버가 `songs`/`performances` 시트와 헤더를 자동 생성한다.
-- Google Sheets의 `songs` 시트가 비어 있고 `YOUTUBE_API_KEY`가 설정되어 있으면, 앱이 첫 곡 목록 조회 때 기본 플레이리스트의 영상 목록을 자동으로 가져온다.
+- `SYNC_PLAYLIST_ON_READ=true`와 `YOUTUBE_API_KEY`가 설정되어 있으면, 앱이 곡 목록을 읽을 때마다 먼저 기본 플레이리스트의 영상 목록을 Google Sheets에 반영한다.
 - 설정 화면의 `플레이리스트 동기화` 버튼은 `YOUTUBE_PLAYLIST_ID`의 모든 페이지를 순회해 전체 목록을 가져온다.
 - 플레이리스트에서 가져온 영상은 제목 안의 날짜를 기본 공연일로 사용한다. 지원 형식은 `2025.04.23`, `2025-04-23`, `2025/04/23`, `2025년 4월 23일`이다.
 - 제목에서 날짜가 추출되면 별도 공연 기록이 없어도 총 공연 수는 최소 1회로 계산하고, 마지막 공연은 `27주 전 (2025.04.23)`처럼 표시한다.

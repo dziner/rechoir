@@ -8,6 +8,7 @@
 - [ ] P1 공개 배포 전 CORS/rate limit 결정: `Access-Control-Allow-Origin: *` 유지 가능 범위와 비밀번호 시도 제한 방식 검토
 - [ ] P1 배포 환경 확인: Netlify/CI Node 버전이 `package.json`의 `>=22.12` 조건을 만족하는지 확인
 - [ ] P1 전체 플레이리스트 동기화 사용 시 Netlify에 `YOUTUBE_API_KEY` 설정 확인
+- [ ] P1 배포 후 Google Sheet `songs` 행 생성 여부 확인
 - [ ] P2 테스트 보강 후보: `calcDerived`, `scoreSongs`, API validator 단위 테스트 추가
 - [ ] P2 설정 공유 정책 확인: 추천 가중치/쿨다운이 사용자별 localStorage인지, 운영자 공용 Sheets 저장인지 결정
 - [ ] P3 문서 보강 후보: README가 필요하면 Google Sheets 컬럼 구조, 환경변수, 배포 절차를 짧게 추가
@@ -20,8 +21,10 @@
 - [x] done P1 2026-06-28 영상 제목 날짜 기반 공연일 계산: 수동 공연 기록이 없어도 제목 날짜를 `lastPerformedAt`으로 사용하고 총 공연 최소 1회 처리
 - [x] done P1 2026-06-28 마지막 공연 표시 개선: `27주 전 (2025.04.23)` 형식으로 날짜 포함
 - [x] done P1 2026-06-28 빈 Google Sheet 자동 스키마 생성: 서버가 `songs`/`performances` 시트와 헤더를 생성하도록 보강
+- [x] done P1 2026-06-28 진입/새로고침 동기화 변경: 곡 목록 GET 요청마다 플레이리스트 전체 동기화 선행
+- [x] done P2 2026-06-28 API 캐시 방지와 Dashboard 오류 표시 추가: `Cache-Control: no-store`, 데이터 로드 오류 메시지
 - [x] done P2 2026-06-28 inactive 곡 중복 방지: sync 경로에서 active 필터 없는 `getAllSongs()` 사용
-- [x] done P2 2026-06-28 동기화 설정 문서 업데이트: `YOUTUBE_PLAYLIST_ID`, `AUTO_SYNC_PLAYLIST_ON_EMPTY`, `YOUTUBE_API_KEY` 필요 조건 설명
+- [x] done P2 2026-06-28 동기화 설정 문서 업데이트: `YOUTUBE_PLAYLIST_ID`, `SYNC_PLAYLIST_ON_READ`, `YOUTUBE_API_KEY` 필요 조건 설명
 - [x] done P1 2026-06-28 서비스 계정 JSON 키 커밋 방지: `.gitignore`에 `docs/*.json`, `*service-account*.json` 추가
 - [x] done P2 2026-06-28 서비스 계정 JSON을 `GOOGLE_SERVICE_ACCOUNT_JSON` 값으로 변환하는 명령을 `docs/google-sheets-setup.md`에 추가
 - [x] done P1 2026-06-28 Google Sheets 설정 문서 작성: `docs/google-sheets-setup.md`
@@ -61,6 +64,7 @@
 - 2026-06-28 Apps Script는 런타임 API가 아니라 `songs`/`performances` 시트 헤더, 필터, 체크박스, 드롭다운을 적용하는 초기화 도구로 제공.
 - 2026-06-28 설정 반영 후 `npm run typecheck`, `npm run build`, `npm audit --json`, `git diff --check` 성공.
 - 2026-06-28 플레이리스트 전체 동기화는 YouTube Data API `playlistItems` 페이지네이션으로 처리. API key가 없으면 전체 목록 보장은 하지 않음.
-- 2026-06-28 `AUTO_SYNC_PLAYLIST_ON_EMPTY` 기본값을 true로 두어 빈 DB 첫 조회 시 자동 import를 시도하도록 변경.
+- 2026-06-28 초기에는 빈 DB 첫 조회 시 자동 import를 시도하도록 구성했으나, 이후 사용자 요청에 따라 모든 곡 목록 조회마다 동기화하도록 확장.
 - 2026-06-28 공연 통계 보정: `calcDerived`가 영상 제목의 날짜를 공연일 후보로 합산하도록 변경. 지원 형식은 `YYYY.MM.DD`, `YYYY-MM-DD`, `YYYY/MM/DD`, `YYYY년 M월 D일`.
 - 2026-06-28 Google Sheets 연동 보강: 비어 있는 새 스프레드시트여도 API가 `songs`/`performances` 시트와 헤더를 자동 생성하도록 변경.
+- 2026-06-28 사용자의 요청에 따라 `SYNC_PLAYLIST_ON_READ=true` 기본값으로 사이트 진입/새로고침 시마다 Google Sheet와 YouTube playlist를 동기화하도록 변경.
