@@ -5,6 +5,7 @@ import { fetchSong, updateSongTags } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { TagBadge } from '../components/TagBadge';
 import { EncoreStatusBadge } from '../components/EncoreStatusBadge';
+import { LoadingState } from '../components/LoadingState';
 import { YouTubeEmbed } from '../components/YouTubeEmbed';
 import { PerformanceTimeline } from '../components/PerformanceTimeline';
 import { TEMPO_KO, DIFFICULTY_KO, COMMON_THEMES, COMMON_MOODS } from '../types';
@@ -40,7 +41,10 @@ export function SongDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-24 text-gray-400 animate-pulse">불러오는 중…</div>
+      <LoadingState
+        title="곡 정보 불러오는 중"
+        description="영상, 태그, 공연 이력을 확인하고 있습니다."
+      />
     );
   }
 

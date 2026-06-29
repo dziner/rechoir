@@ -4,6 +4,7 @@ import { fetchSongs, fetchSettings } from '../lib/api';
 import { scoreSongs } from '../lib/scoring';
 import { RecommendCard } from '../components/RecommendCard';
 import { FilterPanel } from '../components/FilterPanel';
+import { LoadingState } from '../components/LoadingState';
 import type { RecommendFilters } from '../types';
 import { DEFAULT_FILTERS, DEFAULT_SETTINGS } from '../types';
 
@@ -58,9 +59,10 @@ export function Dashboard() {
       <FilterPanel filters={filters} onChange={setFilters} />
 
       {songsLoading ? (
-        <div className="flex justify-center py-16">
-          <span className="animate-pulse text-gray-400">곡 목록 불러오는 중…</span>
-        </div>
+        <LoadingState
+          title="곡 목록 불러오는 중"
+          description="추천 계산에 사용할 공연 기록과 태그를 불러오고 있습니다."
+        />
       ) : (
         <div className="space-y-3">
           {eligible.length === 0 && ineligible.length === 0 && (

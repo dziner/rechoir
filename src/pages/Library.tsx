@@ -4,6 +4,7 @@ import { ListMusic, Repeat2, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { fetchSongs } from '../lib/api';
 import { SongCard } from '../components/SongCard';
+import { LoadingState } from '../components/LoadingState';
 import type { SongWithDerived } from '../types';
 
 type SortKey = 'lastPerformed' | 'encoreCount' | 'title';
@@ -135,9 +136,10 @@ export function Library() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <span className="animate-pulse text-gray-400">불러오는 중…</span>
-        </div>
+        <LoadingState
+          title="곡 목록 불러오는 중"
+          description="Google Sheets와 플레이리스트 데이터를 확인하고 있습니다."
+        />
       ) : displayed.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
           {query
