@@ -139,6 +139,9 @@ export function scoreSongs(
       if (filters.strings !== null && tags.strings !== filters.strings) {
         return null;
       }
+      if (filters.has2nd !== null && derived.has2nd !== filters.has2nd) {
+        return null;
+      }
 
       const rawScore = eligible
         ? weights.rest * restScore

@@ -30,10 +30,19 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
     filters.mood.length +
     (filters.tempo ? 1 : 0) +
     (filters.difficulty ? 1 : 0) +
-    (filters.strings !== null ? 1 : 0);
+    (filters.strings !== null ? 1 : 0) +
+    (filters.has2nd !== null ? 1 : 0);
 
   const reset = () =>
-    onChange({ theme: [], mood: [], tempo: '', difficulty: '', strings: null, cooldownWeeks: filters.cooldownWeeks });
+    onChange({
+      theme: [],
+      mood: [],
+      tempo: '',
+      difficulty: '',
+      strings: null,
+      has2nd: null,
+      cooldownWeeks: filters.cooldownWeeks,
+    });
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -93,7 +102,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
             </div>
           </div>
 
-          {/* 템포·난이도·현악기 */}
+          {/* 템포·난이도·현악기·2부 */}
           <div className="flex flex-wrap gap-4">
             <div>
               <p className="mb-1.5 text-xs font-semibold text-gray-500">템포</p>
@@ -138,6 +147,22 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
                     size="md"
                     active={filters.strings === v}
                     onClick={() => onChange({ ...filters, strings: filters.strings === v ? null : v })}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-gray-500">2부예배 찬양</p>
+              <div className="flex gap-1">
+                {[true, false].map(v => (
+                  <TagBadge
+                    key={String(v)}
+                    label={v ? '있음' : '없음'}
+                    variant="auto"
+                    size="md"
+                    active={filters.has2nd === v}
+                    onClick={() => onChange({ ...filters, has2nd: filters.has2nd === v ? null : v })}
                   />
                 ))}
               </div>
@@ -190,6 +215,13 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
               label={filters.strings ? '현악기 있음' : '현악기 없음'}
               variant="strings"
               onClick={() => onChange({ ...filters, strings: null })}
+            />
+          )}
+          {filters.has2nd !== null && (
+            <TagBadge
+              label={filters.has2nd ? '2부예배 있음' : '2부예배 없음'}
+              variant="auto"
+              onClick={() => onChange({ ...filters, has2nd: null })}
             />
           )}
         </div>

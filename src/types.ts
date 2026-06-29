@@ -57,6 +57,7 @@ export interface RecommendFilters {
   tempo: Tempo | '';
   difficulty: Difficulty | '';
   strings: boolean | null;
+  has2nd: boolean | null;
   cooldownWeeks: number;
 }
 
@@ -81,6 +82,7 @@ export const DEFAULT_FILTERS: RecommendFilters = {
   tempo: '',
   difficulty: '',
   strings: null,
+  has2nd: null,
   cooldownWeeks: 12,
 };
 
