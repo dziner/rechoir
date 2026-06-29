@@ -8,6 +8,7 @@ import {
 } from './lib/sheets';
 import { calcDerived } from './lib/derived';
 import { parsePlaylistTitle, type ParsedPlaylistTitle } from './lib/playlist';
+import { inferTagsFromMetadata, mergeInferredTags, tagsEqual } from './lib/autoTags';
 
 const DEFAULT_PLAYLIST_ID = 'PLeFx2jWRL18F8RYKiXudh4F7u-4PukfS7';
 
@@ -161,6 +162,7 @@ type PlaylistSyncResult = {
 interface PlaylistVideo {
   videoId: string;
   title: string;
+  description: string;
   youtubeUrl: string;
   thumbnail: string;
   publishedAt: string;
@@ -211,6 +213,7 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
         snippet: {
           resourceId?: { videoId?: string };
           title: string;
+          description?: string;
           publishedAt: string;
           thumbnails?: { maxres?: { url: string }; high?: { url: string } };
         };
@@ -225,6 +228,7 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
       videos.push({
         videoId,
         title: item.snippet.title,
+        description: item.snippet.description ?? '',
         youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
         thumbnail:
           item.snippet.thumbnails?.maxres?.url ??
@@ -250,19 +254,26 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
   for (const [key, group] of videosByKey) {
     const bestVideo = [...group].sort(comparePlaylistVideoRecency)[0];
     const existingCanonical = canonicalByKey.get(key);
+    const baseTags = existingCanonical?.tags ?? {
+      theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
+    };
+    const inferredTags = inferTagsFromMetadata({
+      canonicalTitle: bestVideo.parsed.canonicalTitle,
+      rawTitles: group.map(video => video.title),
+      descriptions: group.map(video => video.description),
+    });
     const canonicalSong: Song = {
       ...(existingCanonical ?? {
         id: bestVideo.videoId,
         active: true,
-        tags: {
-          theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
-        },
+        tags: baseTags,
       }),
       title: bestVideo.parsed.canonicalTitle,
       youtubeUrl: bestVideo.youtubeUrl,
       thumbnail: bestVideo.thumbnail,
       publishedAt: bestVideo.publishedAt,
       active: true,
+      tags: mergeInferredTags(baseTags, inferredTags),
     };
     const existingRow = existingCanonical ?? existingById.get(bestVideo.videoId);
     const changed = !existingRow || hasSongChanged(existingRow, canonicalSong);
@@ -317,7 +328,8 @@ function hasSongChanged(left: Song, right: Song): boolean {
     left.youtubeUrl !== right.youtubeUrl ||
     left.thumbnail !== right.thumbnail ||
     left.publishedAt !== right.publishedAt ||
-    left.active !== right.active;
+    left.active !== right.active ||
+    !tagsEqual(left.tags, right.tags);
 }
 
 function collectPlaylistPerformances(
