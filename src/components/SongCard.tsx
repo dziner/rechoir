@@ -46,7 +46,7 @@ export function SongCard({ song }: SongCardProps) {
           ))}
           <TagBadge label={TEMPO_KO[tags.tempo]} variant="tempo" />
           <TagBadge label={DIFFICULTY_KO[tags.difficulty]} variant="difficulty" />
-          {tags.strings && <TagBadge label="현악기" variant="strings" />}
+          {tags.strings && <TagBadge label="🎻 현악기" variant="strings" />}
           {tags.auto.map(a => (
             <TagBadge key={a} label={a} variant="auto" />
           ))}

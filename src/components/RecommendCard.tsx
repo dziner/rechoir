@@ -110,7 +110,7 @@ export function RecommendCard({ song, rank }: RecommendCardProps) {
             ))}
             <TagBadge label={TEMPO_KO[song.tags.tempo]} variant="tempo" />
             <TagBadge label={DIFFICULTY_KO[song.tags.difficulty]} variant="difficulty" />
-            {song.tags.strings && <TagBadge label="현악기" variant="strings" />}
+            {song.tags.strings && <TagBadge label="🎻 현악기" variant="strings" />}
             {song.tags.auto.map(a => (
               <TagBadge key={a} label={a} variant="auto" />
             ))}

@@ -220,7 +220,7 @@ export function SongDetail() {
             {tags.mood.map(m => <TagBadge key={m} label={m} variant="mood" size="md" />)}
             <TagBadge label={TEMPO_KO[tags.tempo]} variant="tempo" size="md" />
             <TagBadge label={DIFFICULTY_KO[tags.difficulty]} variant="difficulty" size="md" />
-            <TagBadge label={tags.strings ? '현악기 있음' : '현악기 없음'} variant="strings" size="md" />
+            {tags.strings && <TagBadge label="🎻 현악기" variant="strings" size="md" />}
             {tags.auto.map(a => <TagBadge key={a} label={a} variant="auto" size="md" />)}
           </div>
         )}
