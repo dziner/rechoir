@@ -1,13 +1,14 @@
 import { type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ClipboardList, LibraryBig, Settings, Sparkles, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import clsx from 'clsx';
 
-const NAV = [
-  { to: '/', label: '추천', icon: '✨' },
-  { to: '/library', label: '라이브러리', icon: '🎵' },
-  { to: '/record', label: '기록', icon: '📝' },
-  { to: '/settings', label: '설정', icon: '⚙️' },
+const NAV: Array<{ to: string; label: string; icon: LucideIcon }> = [
+  { to: '/', label: '추천', icon: Sparkles },
+  { to: '/library', label: '라이브러리', icon: LibraryBig },
+  { to: '/record', label: '기록', icon: ClipboardList },
+  { to: '/settings', label: '설정', icon: Settings },
 ];
 
 interface LayoutProps {
@@ -45,7 +46,12 @@ export function Layout({ children }: LayoutProps) {
       <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl">
           {NAV.map(item => {
-            const active = location.pathname === item.to;
+            const Icon = item.icon;
+            const active = item.to === '/'
+              ? location.pathname === '/'
+              : location.pathname === item.to ||
+                location.pathname.startsWith(`${item.to}/`) ||
+                (item.to === '/library' && location.pathname.startsWith('/song/'));
             return (
               <Link
                 key={item.to}
@@ -55,7 +61,10 @@ export function Layout({ children }: LayoutProps) {
                   active ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-800',
                 )}
               >
-                <span className="text-lg leading-none">{item.icon}</span>
+                <Icon
+                  className={clsx('h-5 w-5', active ? 'stroke-[2.4]' : 'stroke-2')}
+                  aria-hidden="true"
+                />
                 <span>{item.label}</span>
               </Link>
             );

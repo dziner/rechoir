@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSong, updateSongTags } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { TagBadge } from '../components/TagBadge';
+import { EncoreStatusBadge } from '../components/EncoreStatusBadge';
 import { YouTubeEmbed } from '../components/YouTubeEmbed';
 import { PerformanceTimeline } from '../components/PerformanceTimeline';
 import { TEMPO_KO, DIFFICULTY_KO, COMMON_THEMES, COMMON_MOODS } from '../types';
@@ -82,7 +83,7 @@ export function SongDetail() {
         <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600">
           <span>마지막 공연: <strong>{fmtLastPerformed(derived)}</strong></span>
           <span>총 공연: <strong>{derived.performanceCount}회</strong></span>
-          <span>앵콜: <strong>{derived.encoreCount}회</strong></span>
+          <EncoreStatusBadge encoreCount={derived.encoreCount} size="md" />
         </div>
       </div>
 

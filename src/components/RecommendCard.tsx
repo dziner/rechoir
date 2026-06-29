@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { RecommendedSong } from '../types';
 import { TagBadge } from './TagBadge';
+import { EncoreStatusBadge } from './EncoreStatusBadge';
 import { TEMPO_KO, DIFFICULTY_KO } from '../types';
 import clsx from 'clsx';
 
@@ -94,6 +95,10 @@ export function RecommendCard({ song, rank }: RecommendCardProps) {
               </span>
             ))}
           </p>
+
+          <div className="mt-2">
+            <EncoreStatusBadge encoreCount={song.derived.encoreCount} />
+          </div>
 
           {/* Tags row */}
           <div className="mt-2 flex flex-wrap gap-1">

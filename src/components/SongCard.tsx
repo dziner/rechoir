@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { SongWithDerived } from '../types';
 import { TagBadge } from './TagBadge';
+import { EncoreStatusBadge } from './EncoreStatusBadge';
 import { TEMPO_KO, DIFFICULTY_KO } from '../types';
 import { fmtLastPerformed } from '../lib/utils';
 
@@ -33,14 +34,10 @@ export function SongCard({ song }: SongCardProps) {
           {song.title}
         </p>
 
-        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
           <span>{fmtLastPerformed(derived)}</span>
-          {derived.encoreCount > 0 && (
-            <>
-              <span className="text-gray-300">·</span>
-              <span>앵콜 {derived.encoreCount}회</span>
-            </>
-          )}
+          <span className="text-gray-300">·</span>
+          <EncoreStatusBadge encoreCount={derived.encoreCount} />
         </div>
 
         <div className="mt-1.5 flex flex-wrap gap-1">

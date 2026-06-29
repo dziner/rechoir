@@ -1,10 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ListMusic, Repeat2, Search } from 'lucide-react';
+import clsx from 'clsx';
 import { fetchSongs } from '../lib/api';
 import { SongCard } from '../components/SongCard';
 import type { SongWithDerived } from '../types';
 
 type SortKey = 'lastPerformed' | 'encoreCount' | 'title';
+type ViewMode = 'all' | 'encore';
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'lastPerformed', label: '마지막 공연 순' },
@@ -36,31 +39,86 @@ function filterSongs(songs: SongWithDerived[], query: string): SongWithDerived[]
 export function Library() {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('lastPerformed');
+  const [view, setView] = useState<ViewMode>('all');
 
   const { data: songs = [], isLoading } = useQuery({
     queryKey: ['songs'],
     queryFn: fetchSongs,
   });
 
-  const displayed = useMemo(
-    () => sortSongs(filterSongs(songs, query), sort),
-    [songs, query, sort],
-  );
+  const counts = useMemo(() => ({
+    all: songs.length,
+    encore: songs.filter(song => song.derived.encoreCount > 0).length,
+  }), [songs]);
+
+  const displayed = useMemo(() => {
+    const scoped = view === 'encore'
+      ? songs.filter(song => song.derived.encoreCount > 0)
+      : songs;
+    return sortSongs(filterSongs(scoped, query), sort);
+  }, [songs, query, sort, view]);
+
+  const viewOptions: Array<{
+    value: ViewMode;
+    label: string;
+    count: number;
+    icon: typeof ListMusic;
+  }> = [
+    { value: 'all', label: '전체', count: counts.all, icon: ListMusic },
+    { value: 'encore', label: '앵콜곡', count: counts.encore, icon: Repeat2 },
+  ];
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-gray-900">곡 라이브러리</h1>
 
+      <div className="grid grid-cols-2 gap-2">
+        {viewOptions.map(option => {
+          const Icon = option.icon;
+          const active = view === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setView(option.value)}
+              className={clsx(
+                'flex min-h-14 items-center justify-between rounded-xl border px-3 text-left transition-colors',
+                active
+                  ? 'border-indigo-300 bg-indigo-50 text-indigo-800 shadow-sm'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50',
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                <span className="text-sm font-semibold">{option.label}</span>
+              </span>
+              <span
+                className={clsx(
+                  'rounded-full px-2 py-0.5 text-xs font-bold',
+                  active ? 'bg-white text-indigo-700' : 'bg-gray-100 text-gray-500',
+                )}
+              >
+                {option.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Search + sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+          <Search
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            aria-hidden="true"
+          />
           <input
             type="search"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="제목 또는 태그 검색…"
-            className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-8 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <select
@@ -82,7 +140,11 @@ export function Library() {
         </div>
       ) : displayed.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          {query ? `"${query}"에 해당하는 곡이 없습니다` : '곡이 없습니다'}
+          {query
+            ? `"${query}"에 해당하는 곡이 없습니다`
+            : view === 'encore'
+            ? '앵콜 기록이 있는 곡이 없습니다'
+            : '곡이 없습니다'}
         </div>
       ) : (
         <>
