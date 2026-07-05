@@ -7,7 +7,7 @@ import clsx from 'clsx';
 const NAV: Array<{ to: string; label: string; icon: LucideIcon }> = [
   { to: '/', label: '추천', icon: Sparkles },
   { to: '/library', label: '라이브러리', icon: LibraryBig },
-  { to: '/record', label: '기록', icon: ClipboardList },
+  { to: '/record', label: '곡정보편집', icon: ClipboardList },
   { to: '/settings', label: '설정', icon: Settings },
 ];
 

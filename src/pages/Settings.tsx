@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSettings, saveSettings, syncPlaylist, addSong, resetDemoData } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
-import { PasswordGate } from '../components/PasswordGate';
 import type { AppSettings, Song } from '../types';
 import { DEFAULT_SETTINGS } from '../types';
 import { youtubeIdFromUrl, thumbnailUrl } from '../lib/utils';
 
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
-function SettingsForm() {
+export function Settings() {
   const { getPassword } = useAuth();
   const qc = useQueryClient();
 
@@ -223,13 +222,5 @@ function SettingsForm() {
         </div>
       )}
     </div>
-  );
-}
-
-export function Settings() {
-  return (
-    <PasswordGate>
-      <SettingsForm />
-    </PasswordGate>
   );
 }
