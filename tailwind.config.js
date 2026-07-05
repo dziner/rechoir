@@ -14,7 +14,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"Noto Sans KR"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Pretendard Variable', 'Pretendard', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },
   },
