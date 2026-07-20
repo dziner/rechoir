@@ -481,6 +481,7 @@ function SongSyncPanel() {
   const qc = useQueryClient();
 
   const [syncStatus, setSyncStatus] = useState('');
+  const [syncDetails, setSyncDetails] = useState<{ addedTitles: string[]; updatedTitles: string[] } | null>(null);
   const syncMut = useMutation({
     mutationFn: () => syncPlaylist(getPassword()),
     onSuccess: result => {
@@ -489,8 +490,15 @@ function SongSyncPanel() {
         `동기화 완료: ${result.scanned ?? result.added + result.updated}개 영상 확인, `
         + `${result.added}곡 추가, ${result.updated}곡 업데이트`,
       );
+      setSyncDetails({
+        addedTitles: result.addedTitles ?? [],
+        updatedTitles: result.updatedTitles ?? [],
+      });
     },
-    onError: (e: Error) => setSyncStatus(`오류: ${e.message}`),
+    onError: (e: Error) => {
+      setSyncStatus(`오류: ${e.message}`);
+      setSyncDetails(null);
+    },
   });
 
   const [importUrl, setImportUrl] = useState('');
@@ -582,6 +590,16 @@ function SongSyncPanel() {
           <p className={`text-sm ${syncStatus.startsWith('오류') ? 'text-red-600' : 'text-green-700'}`}>
             {syncStatus}
           </p>
+        )}
+        {syncDetails && (syncDetails.addedTitles.length > 0 || syncDetails.updatedTitles.length > 0) && (
+          <div className="space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+            {syncDetails.addedTitles.length > 0 && (
+              <p>➕ 추가: {syncDetails.addedTitles.join(', ')}</p>
+            )}
+            {syncDetails.updatedTitles.length > 0 && (
+              <p>♻️ 업데이트: {syncDetails.updatedTitles.join(', ')}</p>
+            )}
+          </div>
         )}
         <button
           onClick={() => syncMut.mutate()}

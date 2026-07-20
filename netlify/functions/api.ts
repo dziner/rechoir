@@ -157,6 +157,8 @@ type PlaylistSyncResult = {
   updated: number;
   scanned: number;
   playlistId: string;
+  addedTitles: string[];
+  updatedTitles: string[];
 };
 
 interface PlaylistVideo {
@@ -250,6 +252,8 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
   }
 
   const playlistPerformances: Array<Omit<PerformanceLog, 'id'> & { id: string }> = [];
+  const addedTitles: string[] = [];
+  const updatedTitles: string[] = [];
 
   for (const [key, group] of videosByKey) {
     const bestVideo = [...group].sort(comparePlaylistVideoRecency)[0];
@@ -280,8 +284,13 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
 
     if (changed) {
       await upsertSong(canonicalSong);
-      if (existingRow) updated++;
-      else added++;
+      if (existingRow) {
+        updated++;
+        updatedTitles.push(canonicalSong.title);
+      } else {
+        added++;
+        addedTitles.push(canonicalSong.title);
+      }
     }
     canonicalByKey.set(key, canonicalSong);
 
@@ -290,6 +299,7 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
       if (duplicate && duplicate.id !== canonicalSong.id && duplicate.active) {
         await upsertSong({ ...duplicate, active: false });
         updated++;
+        updatedTitles.push(duplicate.title);
       }
     }
 
@@ -308,19 +318,26 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
 
   await upsertPerformancesBySongDate(playlistPerformances);
 
-  return { added, updated, scanned, playlistId };
+  return { added, updated, scanned, playlistId, addedTitles, updatedTitles };
 }
 
 function comparePlaylistVideoRecency(a: PlaylistVideo, b: PlaylistVideo): number {
   const aDate = a.parsed.performanceDate ?? a.publishedAt;
   const bDate = b.parsed.performanceDate ?? b.publishedAt;
-  return bDate.localeCompare(aDate);
+  const dateCompare = bDate.localeCompare(aDate);
+  // Stable tiebreak so the "representative" video for a canonical song
+  // never flips between runs when two videos share the same date
+  // (e.g. 1부/2부 uploaded as separate videos) — otherwise the
+  // youtubeUrl/thumbnail/publishedAt would oscillate and the song
+  // would look "changed" on every sync forever.
+  return dateCompare !== 0 ? dateCompare : a.videoId.localeCompare(b.videoId);
 }
 
 function compareSongRecency(a: Song, b: Song): number {
   const aDate = parsePlaylistTitle(a.title).performanceDate ?? a.publishedAt;
   const bDate = parsePlaylistTitle(b.title).performanceDate ?? b.publishedAt;
-  return bDate.localeCompare(aDate);
+  const dateCompare = bDate.localeCompare(aDate);
+  return dateCompare !== 0 ? dateCompare : a.id.localeCompare(b.id);
 }
 
 function hasSongChanged(left: Song, right: Song): boolean {
