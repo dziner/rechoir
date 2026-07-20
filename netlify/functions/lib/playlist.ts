@@ -66,7 +66,7 @@ function cleanCanonicalTitle(rawTitle: string): string {
     .replace(/콰이어/g, ' ')
     .replace(new RegExp(`[-–—]\\s*(${EVENT_PATTERN}).*$`, 'g'), ' ')
     .replace(new RegExp(`\\(\\s*(${EVENT_PATTERN})[^)]*\\)`, 'g'), ' ')
-    .replace(new RegExp(`\\s+(${EVENT_PATTERN})$`, 'g'), ' ')
+    .replace(new RegExp(`\\s+(${EVENT_PATTERN}).*$`, 'g'), ' ')
     .replace(/\s*-\s*주일\s*대예배.*$/g, ' ')
     .replace(/^[\s\-–—:]+|[\s\-–—:]+$/g, '')
     .replace(/\s+/g, ' ')
