@@ -20,7 +20,7 @@ export function EncoreStatusBadge({ encoreCount, size = 'sm' }: EncoreStatusBadg
       )}
     >
       <Repeat2 className={size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} aria-hidden="true" />
-      {hasEncore ? `앵콜 ${encoreCount}회` : '앵콜 없음'}
+      {hasEncore ? `앵콜 ${encoreCount}회` : '앵콜기록 없음'}
     </span>
   );
 }
