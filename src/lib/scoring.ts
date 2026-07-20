@@ -66,8 +66,6 @@ function reasonText(
     reasons.push('공연 이력 없음 (신곡 후보)');
   }
 
-  reasons.push(`앵콜 **${derived.encoreCount}회**`);
-
   const hasFilter = filterTheme.length > 0 || filterMood.length > 0;
   if (hasFilter) {
     const matchedTheme = filterTheme.filter(f =>
