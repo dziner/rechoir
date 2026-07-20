@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSongs, fetchSettings } from '../lib/api';
-import { scoreSongs } from '../lib/scoring';
+import { scoreSongs, pickFeaturedRecommendation } from '../lib/scoring';
 import { RecommendCard } from '../components/RecommendCard';
 import { FilterPanel } from '../components/FilterPanel';
 import { LoadingState } from '../components/LoadingState';
@@ -30,6 +30,14 @@ export function Dashboard() {
 
   const eligible = recommended.filter(s => s.eligible);
   const ineligible = recommended.filter(s => !s.eligible);
+
+  // Scores cluster closely together, so picking one at random from the
+  // top-scored pool (rather than always the single highest score) is
+  // memoized on the pool's *contents*, not the array reference, so it
+  // only reshuffles when the eligible set actually changes.
+  const poolKey = eligible.map(s => `${s.id}:${s.score.toFixed(4)}`).sort().join('|');
+  const featured = useMemo(() => pickFeaturedRecommendation(eligible), [poolKey]);
+  const restEligible = featured ? eligible.filter(s => s.id !== featured.id) : eligible;
 
   const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -72,9 +80,19 @@ export function Dashboard() {
             </div>
           )}
 
-          {/* Eligible recommendations */}
-          {eligible.map((song, i) => (
-            <RecommendCard key={song.id} song={song} rank={i + 1} />
+          {/* Featured pick — randomly sampled from the top-scored pool */}
+          {featured && (
+            <>
+              <RecommendCard key={featured.id} song={featured} rank={1} />
+              <p className="px-1 text-xs text-gray-400">
+                상위 점수 후보 중에서 무작위로 골랐어요 · 새로고침하면 다른 후보가 나올 수 있습니다
+              </p>
+            </>
+          )}
+
+          {/* Remaining eligible recommendations */}
+          {restEligible.map((song, i) => (
+            <RecommendCard key={song.id} song={song} rank={i + 2} />
           ))}
 
           {/* Ineligible (cooldown not met) */}

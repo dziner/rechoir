@@ -161,3 +161,20 @@ export function scoreSongs(
     .filter((s): s is RecommendedSong => s !== null)
     .sort(compareRecommendedSongs);
 }
+
+const FEATURED_POOL_SIZE = 15;
+
+/**
+ * Scores cluster tightly, so always featuring the single highest-scored
+ * song makes the "top pick" look static across visits. Instead, sample
+ * one song at random from the top-scored pool each time this is called.
+ */
+export function pickFeaturedRecommendation(
+  eligibleSongs: RecommendedSong[],
+  poolSize: number = FEATURED_POOL_SIZE,
+): RecommendedSong | null {
+  if (eligibleSongs.length === 0) return null;
+
+  const pool = [...eligibleSongs].sort((a, b) => b.score - a.score).slice(0, poolSize);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
