@@ -10,7 +10,7 @@ import { YouTubeEmbed } from '../components/YouTubeEmbed';
 import { PerformanceTimeline } from '../components/PerformanceTimeline';
 import { TEMPO_KO, DIFFICULTY_KO, COMMON_THEMES, COMMON_MOODS } from '../types';
 import type { SongTags, Tempo, Difficulty } from '../types';
-import { fmtLastPerformed } from '../lib/utils';
+import { fmtLastPerformed, isValidYoutubeId } from '../lib/utils';
 
 export function SongDetail() {
   const { id } = useParams<{ id: string }>();
@@ -79,7 +79,15 @@ export function SongDetail() {
       </Link>
 
       {/* YouTube embed */}
-      <YouTubeEmbed videoId={song.id} title={song.title} />
+      {isValidYoutubeId(song.id) ? (
+        <YouTubeEmbed videoId={song.id} title={song.title} />
+      ) : (
+        <div className="flex aspect-video w-full flex-col items-center justify-center gap-1 rounded-xl bg-purple-50 text-purple-700">
+          <span className="text-2xl">🎤</span>
+          <p className="text-sm font-semibold">유튜브 영상 없음</p>
+          <p className="text-xs text-purple-500">방송 문제 등으로 영상이 업로드되지 않은 곡입니다.</p>
+        </div>
+      )}
 
       {/* Title + stats */}
       <div>

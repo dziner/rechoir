@@ -114,6 +114,20 @@ export function youtubeIdFromUrl(url: string): string {
   return match?.[1] ?? url;
 }
 
+const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+export function isValidYoutubeId(id: string): boolean {
+  return YOUTUBE_ID_RE.test(id);
+}
+
+export function generateManualSongId(): string {
+  return `manual-${crypto.randomUUID()}`;
+}
+
+export function isManualSongId(id: string): boolean {
+  return id.startsWith('manual-');
+}
+
 export function thumbnailUrl(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 }

@@ -3,10 +3,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSongs, addPerformance, syncPlaylist, addSong } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { PasswordGate } from '../components/PasswordGate';
-import type { PerformanceType, ServiceType, Song } from '../types';
-import { youtubeIdFromUrl, thumbnailUrl } from '../lib/utils';
+import { TagBadge } from '../components/TagBadge';
+import type { PerformanceType, ServiceType, Song, SongTags, Tempo, Difficulty } from '../types';
+import { TEMPO_KO, DIFFICULTY_KO, COMMON_THEMES, COMMON_MOODS } from '../types';
+import { youtubeIdFromUrl, thumbnailUrl, isValidYoutubeId, generateManualSongId } from '../lib/utils';
 
-const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+const BLANK_MANUAL_TAGS: SongTags = {
+  theme: [],
+  tempo: 'mid',
+  mood: [],
+  strings: false,
+  difficulty: 'mid',
+  auto: [],
+};
 
 function RecordForm() {
   const { getPassword } = useAuth();
@@ -176,6 +185,297 @@ function RecordForm() {
   );
 }
 
+function ManualRecordPanel() {
+  const { getPassword } = useAuth();
+  const qc = useQueryClient();
+
+  const { data: songs = [] } = useQuery({ queryKey: ['songs'], queryFn: fetchSongs });
+
+  const [titleQuery, setTitleQuery] = useState('');
+  const [selectedId, setSelectedId] = useState('');
+  const [tags, setTags] = useState<SongTags>(BLANK_MANUAL_TAGS);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [services, setServices] = useState<ServiceType[]>(['1부']);
+  const [type, setType] = useState<PerformanceType>('new');
+  const [note, setNote] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!titleQuery) return [];
+    const q = titleQuery.toLowerCase();
+    return songs.filter(s => s.title.toLowerCase().includes(q)).slice(0, 8);
+  }, [songs, titleQuery]);
+
+  const selectedSong = songs.find(s => s.id === selectedId);
+
+  const reset = () => {
+    setTitleQuery('');
+    setSelectedId('');
+    setTags(BLANK_MANUAL_TAGS);
+    setNote('');
+  };
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      let songId = selectedId;
+      if (!songId) {
+        songId = generateManualSongId();
+        await addSong({
+          id: songId,
+          title: titleQuery.trim(),
+          youtubeUrl: 'about:blank',
+          thumbnail: '/manual-song-placeholder.svg',
+          publishedAt: date,
+          active: true,
+          tags,
+        }, getPassword());
+      }
+      await addPerformance({ songId, date, services, type, note }, getPassword());
+      return songId;
+    },
+    onSuccess: songId => {
+      qc.invalidateQueries({ queryKey: ['songs'] });
+      qc.invalidateQueries({ queryKey: ['song', songId] });
+      setSuccess(true);
+      reset();
+      setTimeout(() => setSuccess(false), 3000);
+    },
+  });
+
+  const toggleService = (s: ServiceType) => {
+    setServices(prev =>
+      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s],
+    );
+  };
+
+  const toggleTag = (field: 'theme' | 'mood', value: string) => {
+    const arr = tags[field];
+    setTags({
+      ...tags,
+      [field]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value],
+    });
+  };
+
+  const title = selectedSong ? selectedSong.title : titleQuery;
+  const canSubmit = title.trim().length > 0 && date && services.length > 0;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
+      <div>
+        <h2 className="font-semibold text-gray-900">수동 기록 추가</h2>
+        <p className="text-xs text-gray-500">
+          방송 문제 등으로 유튜브에 영상이 올라가지 않은 곡의 공연을 직접 기록합니다.
+        </p>
+      </div>
+
+      {success && (
+        <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+          ✅ 기록이 저장되었습니다.
+        </div>
+      )}
+
+      {/* Title search / new title */}
+      <div>
+        <label className="mb-1.5 block text-sm font-semibold text-gray-700">곡 제목</label>
+        <input
+          type="search"
+          value={title}
+          onChange={e => {
+            setTitleQuery(e.target.value);
+            setSelectedId('');
+          }}
+          placeholder="곡 제목 검색 또는 신규 입력…"
+          disabled={!!selectedId}
+          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-gray-50"
+        />
+        {!selectedId && filtered.length > 0 && (
+          <ul className="mt-1 rounded-xl border border-gray-200 bg-white shadow-md overflow-hidden">
+            {filtered.map(s => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(s.id)}
+                  className="w-full px-4 py-2.5 text-left text-sm hover:bg-indigo-50 text-gray-800"
+                >
+                  {s.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedId && (
+          <button
+            type="button"
+            onClick={() => setSelectedId('')}
+            className="mt-1.5 text-xs text-indigo-600 hover:underline"
+          >
+            기존 곡 선택 취소하고 다시 입력
+          </button>
+        )}
+      </div>
+
+      {/* Tags — only for brand-new songs not already in the library */}
+      {!selectedId && titleQuery.trim() && (
+        <div className="space-y-3 rounded-xl bg-gray-50 p-3">
+          <p className="text-xs font-semibold text-gray-500">
+            새 곡입니다 — 태그를 선택해 주세요
+          </p>
+          <div>
+            <p className="mb-1.5 text-xs font-semibold text-gray-500">주제</p>
+            <div className="flex flex-wrap gap-1.5">
+              {COMMON_THEMES.map(t => (
+                <TagBadge
+                  key={t}
+                  label={t}
+                  variant="theme"
+                  active={tags.theme.includes(t)}
+                  onClick={() => toggleTag('theme', t)}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1.5 text-xs font-semibold text-gray-500">분위기</p>
+            <div className="flex flex-wrap gap-1.5">
+              {COMMON_MOODS.map(m => (
+                <TagBadge
+                  key={m}
+                  label={m}
+                  variant="mood"
+                  active={tags.mood.includes(m)}
+                  onClick={() => toggleTag('mood', m)}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <div>
+              <p className="mb-1 text-xs font-semibold text-gray-500">템포</p>
+              <div className="flex gap-1">
+                {(['slow', 'mid', 'fast'] as Tempo[]).map(t => (
+                  <TagBadge
+                    key={t}
+                    label={TEMPO_KO[t]}
+                    variant="tempo"
+                    active={tags.tempo === t}
+                    onClick={() => setTags({ ...tags, tempo: t })}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-gray-500">난이도</p>
+              <div className="flex gap-1">
+                {(['low', 'mid', 'high'] as Difficulty[]).map(d => (
+                  <TagBadge
+                    key={d}
+                    label={DIFFICULTY_KO[d]}
+                    variant="difficulty"
+                    active={tags.difficulty === d}
+                    onClick={() => setTags({ ...tags, difficulty: d })}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-gray-500">현악기 합주</p>
+              <div className="flex gap-1">
+                {[true, false].map(v => (
+                  <TagBadge
+                    key={String(v)}
+                    label={v ? '있음' : '없음'}
+                    variant="strings"
+                    active={tags.strings === v}
+                    onClick={() => setTags({ ...tags, strings: v })}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date */}
+      <div>
+        <label className="mb-1.5 block text-sm font-semibold text-gray-700">날짜</label>
+        <input
+          type="date"
+          value={date}
+          onChange={e => setDate(e.target.value)}
+          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none"
+        />
+      </div>
+
+      {/* Services */}
+      <div>
+        <label className="mb-1.5 block text-sm font-semibold text-gray-700">예배</label>
+        <div className="flex gap-2">
+          {(['1부', '2부'] as ServiceType[]).map(s => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => toggleService(s)}
+              className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
+                services.includes(s)
+                  ? 'border-indigo-500 bg-indigo-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Type */}
+      <div>
+        <label className="mb-1.5 block text-sm font-semibold text-gray-700">구분</label>
+        <div className="flex gap-2">
+          {(['new', 'encore'] as PerformanceType[]).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
+                type === t
+                  ? 'border-indigo-500 bg-indigo-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {t === 'new' ? '신곡' : '앵콜'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Note */}
+      <div>
+        <label className="mb-1.5 block text-sm font-semibold text-gray-700">메모 (선택)</label>
+        <input
+          type="text"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="예: 방송 송출 문제로 영상 없음"
+          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none"
+        />
+      </div>
+
+      {mutation.error && (
+        <p className="text-sm text-red-600">{(mutation.error as Error).message}</p>
+      )}
+
+      <button
+        type="button"
+        disabled={!canSubmit || mutation.isPending}
+        onClick={() => mutation.mutate()}
+        className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+      >
+        {mutation.isPending ? '저장 중…' : '기록 추가'}
+      </button>
+    </div>
+  );
+}
+
 function SongSyncPanel() {
   const { getPassword } = useAuth();
   const qc = useQueryClient();
@@ -211,7 +511,7 @@ function SongSyncPanel() {
   const handleImport = () => {
     if (!importUrl || !importTitle) return;
     const id = youtubeIdFromUrl(importUrl.trim());
-    if (!YOUTUBE_ID_RE.test(id)) {
+    if (!isValidYoutubeId(id)) {
       setImportStatus('오류: 올바른 YouTube URL 또는 영상 ID를 입력해 주세요.');
       return;
     }
@@ -300,6 +600,7 @@ export function RecordPerformance() {
     <PasswordGate>
       <div className="space-y-8">
         <RecordForm />
+        <ManualRecordPanel />
         <SongSyncPanel />
       </div>
     </PasswordGate>
