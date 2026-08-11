@@ -486,9 +486,11 @@ function SongSyncPanel() {
     mutationFn: () => syncPlaylist(getPassword()),
     onSuccess: result => {
       qc.invalidateQueries({ queryKey: ['songs'] });
+      const removed = result.removedPerformances ?? 0;
       setSyncStatus(
         `동기화 완료: ${result.scanned ?? result.added + result.updated}개 영상 확인, `
-        + `${result.added}곡 추가, ${result.updated}곡 업데이트`,
+        + `${result.added}곡 추가, ${result.updated}곡 업데이트`
+        + (removed > 0 ? `, 오래된 공연 기록 ${removed}건 정리` : ''),
       );
       setSyncDetails({
         addedTitles: result.addedTitles ?? [],

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { checkPassword, corsHeaders } from './lib/auth';
 import {
   getSongs, getAllSongs, upsertSong, updateSongTags, updateSongFields, getPerformances,
-  appendPerformance, upsertPerformancesBySongDate,
+  appendPerformance, upsertPerformancesBySongDate, PLAYLIST_SYNC_NOTE,
   type Song, type PerformanceLog, type SongFieldPatch,
 } from './lib/sheets';
 import { calcDerived } from './lib/derived';
@@ -184,6 +184,7 @@ type PlaylistSyncResult = {
   playlistId: string;
   addedTitles: string[];
   updatedTitles: string[];
+  removedPerformances: number;
 };
 
 interface PlaylistVideo {
@@ -279,6 +280,7 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
   const playlistPerformances: Array<Omit<PerformanceLog, 'id'> & { id: string }> = [];
   const addedTitles: string[] = [];
   const updatedTitles: string[] = [];
+  const syncedSongIds = new Set<string>();
 
   for (const [key, group] of videosByKey) {
     const bestVideo = [...group].sort(comparePlaylistVideoRecency)[0];
@@ -336,14 +338,23 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
         date: performance.date,
         services: performance.services,
         type: index === 0 ? 'new' : 'encore',
-        note: 'playlist sync',
+        note: PLAYLIST_SYNC_NOTE,
       });
     }
+    syncedSongIds.add(canonicalSong.id);
   }
 
-  await upsertPerformancesBySongDate(playlistPerformances);
+  // Prune sync-created dates that the playlist no longer claims, so correcting
+  // a performance date in a YouTube title actually moves the record instead of
+  // leaving the old date behind.
+  const { removed } = await upsertPerformancesBySongDate(playlistPerformances, {
+    pruneSyncedSongIds: syncedSongIds,
+  });
 
-  return { added, updated, scanned, playlistId, addedTitles, updatedTitles };
+  return {
+    added, updated, scanned, playlistId, addedTitles, updatedTitles,
+    removedPerformances: removed,
+  };
 }
 
 function comparePlaylistVideoRecency(a: PlaylistVideo, b: PlaylistVideo): number {

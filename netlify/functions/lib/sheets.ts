@@ -50,6 +50,9 @@ const PERFORMANCE_HEADERS = [
   'note',
 ];
 
+/** Marks a performance row as created by playlist sync (never hand-entered). */
+export const PLAYLIST_SYNC_NOTE = 'playlist sync';
+
 const schemaInitBySheetId = new Map<string, Promise<void>>();
 
 function getAuth() {
@@ -398,10 +401,37 @@ export async function upsertPerformanceBySongDate(
   await upsertPerformancesBySongDate([perf]);
 }
 
+async function getSheetGidByTitle(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  title: string,
+): Promise<number | null> {
+  const metadata = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties(sheetId,title)',
+  });
+  const match = (metadata.data.sheets ?? []).find(
+    sheet => sheet.properties?.title === title,
+  );
+  return match?.properties?.sheetId ?? null;
+}
+
+export interface UpsertPerformancesOptions {
+  /**
+   * When provided, sync-created rows for these songs whose date is no longer
+   * in the playlist are removed. Needed because a performance date lives in
+   * the YouTube title: editing the date there used to append the corrected
+   * date while the old one lingered forever.
+   */
+  pruneSyncedSongIds?: Set<string>;
+}
+
 export async function upsertPerformancesBySongDate(
   performances: Array<Omit<PerformanceLog, 'id'> & { id: string }>,
-): Promise<void> {
-  if (performances.length === 0) return;
+  options: UpsertPerformancesOptions = {},
+): Promise<{ removed: number }> {
+  const { pruneSyncedSongIds } = options;
+  if (performances.length === 0 && !pruneSyncedSongIds) return { removed: 0 };
 
   const { sheets, sheetId } = await getSheetContext();
   const res = await sheets.spreadsheets.values.get({
@@ -424,6 +454,9 @@ export async function upsertPerformancesBySongDate(
 
   const updates: Array<{ range: string; values: string[][] }> = [];
   const appends: string[][] = [];
+  const desiredKeys = new Set(
+    performances.map(perf => performanceKey(perf.songId, perf.date)),
+  );
 
   for (const perf of performances) {
     const existing = existingBySongDate.get(performanceKey(perf.songId, perf.date));
@@ -441,7 +474,10 @@ export async function upsertPerformancesBySongDate(
         perf.date,
         arrayToCsv(mergeServices(csvToArray(cell(row, 3)), perf.services)),
         cell(row, 4) === 'new' || perf.type === 'new' ? 'new' : 'encore',
-        cell(row, 5) || perf.note,
+        // Keep whatever note the row already had, even when empty. Stamping
+        // blank notes with the sync marker would make hand-entered rows look
+        // sync-created and therefore eligible for pruning below.
+        cell(row, 5),
       ]],
     });
   }
@@ -464,6 +500,48 @@ export async function upsertPerformancesBySongDate(
       requestBody: { values: appends },
     });
   }
+
+  let removed = 0;
+  if (pruneSyncedSongIds && pruneSyncedSongIds.size > 0) {
+    // Only rows explicitly marked as sync-created are ever deleted, so a
+    // manually entered record is never destroyed by a playlist sync.
+    const staleRowNumbers = rows
+      .map((row, index) => ({ row, rowNumber: index + 2 }))
+      .filter(({ row }) => {
+        const songId = cell(row, 1);
+        const date = cell(row, 2);
+        if (!songId || !date) return false;
+        if (!pruneSyncedSongIds.has(songId)) return false;
+        if (cell(row, 5) !== PLAYLIST_SYNC_NOTE) return false;
+        return !desiredKeys.has(performanceKey(songId, date));
+      })
+      .map(({ rowNumber }) => rowNumber)
+      .sort((a, b) => b - a);
+
+    if (staleRowNumbers.length > 0) {
+      const gid = await getSheetGidByTitle(sheets, sheetId, 'performances');
+      if (gid !== null) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: sheetId,
+          requestBody: {
+            requests: staleRowNumbers.map(rowNumber => ({
+              deleteDimension: {
+                range: {
+                  sheetId: gid,
+                  dimension: 'ROWS',
+                  startIndex: rowNumber - 1,
+                  endIndex: rowNumber,
+                },
+              },
+            })),
+          },
+        });
+        removed = staleRowNumbers.length;
+      }
+    }
+  }
+
+  return { removed };
 }
 
 function performanceKey(songId: string, date: string): string {

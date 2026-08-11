@@ -203,6 +203,7 @@ export async function syncPlaylist(
   playlistId?: string;
   addedTitles?: string[];
   updatedTitles?: string[];
+  removedPerformances?: number;
 }> {
   if (DEMO) {
     return { added: 0, updated: 0 };
