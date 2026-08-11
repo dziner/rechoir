@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
 import type { SongWithDerived } from '../types';
 import { TagBadge } from './TagBadge';
 import { EncoreStatusBadge } from './EncoreStatusBadge';
@@ -13,14 +14,19 @@ export function SongCard({ song }: SongCardProps) {
   const { derived, tags } = song;
 
   return (
-    <Link
-      to={`/song/${song.id}`}
-      className="group flex gap-3 rounded-xl border border-gray-200 bg-white p-3 transition-all hover:border-indigo-200 hover:shadow-sm"
-    >
+    // The card body uses a stretched overlay link so the edit shortcut can sit
+    // alongside it without nesting interactive elements inside an anchor.
+    <div className="group relative flex gap-3 rounded-xl border border-gray-200 bg-white p-3 transition-all hover:border-indigo-200 hover:shadow-sm">
+      <Link
+        to={`/song/${song.id}`}
+        aria-label={`${song.title} 상세 보기`}
+        className="absolute inset-0 z-0 rounded-xl"
+      />
+
       <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-gray-100">
         <img
           src={song.thumbnail}
-          alt={song.title}
+          alt=""
           className="h-full w-full object-cover transition-transform group-hover:scale-105"
           onError={e => {
             (e.target as HTMLImageElement).src =
@@ -30,9 +36,19 @@ export function SongCard({ song }: SongCardProps) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-1 text-sm font-semibold text-gray-900 group-hover:text-indigo-700">
-          {song.title}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="line-clamp-1 text-sm font-semibold text-gray-900 group-hover:text-indigo-700">
+            {song.title}
+          </p>
+          <Link
+            to={`/song/${song.id}?edit=1`}
+            aria-label={`${song.title} 정보 편집`}
+            title="곡 정보 편집"
+            className="relative z-10 -mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
           <span>{fmtLastPerformed(derived)}</span>
@@ -52,6 +68,6 @@ export function SongCard({ song }: SongCardProps) {
           ))}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

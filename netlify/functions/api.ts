@@ -2,9 +2,9 @@ import type { Handler, HandlerEvent, HandlerResponse } from '@netlify/functions'
 import { randomUUID } from 'node:crypto';
 import { checkPassword, corsHeaders } from './lib/auth';
 import {
-  getSongs, getAllSongs, upsertSong, updateSongTags, getPerformances,
+  getSongs, getAllSongs, upsertSong, updateSongTags, updateSongFields, getPerformances,
   appendPerformance, upsertPerformancesBySongDate,
-  type Song, type PerformanceLog,
+  type Song, type PerformanceLog, type SongFieldPatch,
 } from './lib/sheets';
 import { calcDerived } from './lib/derived';
 import { parsePlaylistTitle, type ParsedPlaylistTitle } from './lib/playlist';
@@ -123,6 +123,31 @@ function parseSong(value: unknown): Song | null {
     active: value.active,
     tags,
   };
+}
+
+function parseSongPatch(value: unknown): SongFieldPatch | null {
+  if (!isRecord(value)) return null;
+
+  const patch: SongFieldPatch = {};
+  if ('title' in value) {
+    if (!isNonEmptyString(value.title)) return null;
+    patch.title = value.title.trim();
+  }
+  if ('publishedAt' in value) {
+    if (!isIsoDate(value.publishedAt)) return null;
+    patch.publishedAt = value.publishedAt;
+  }
+  if ('active' in value) {
+    if (typeof value.active !== 'boolean') return null;
+    patch.active = value.active;
+  }
+  if ('tags' in value) {
+    const tags = parseTagPatch(value.tags);
+    if (!tags) return null;
+    patch.tags = tags;
+  }
+
+  return patch;
 }
 
 function parsePerformance(value: unknown): Omit<PerformanceLog, 'id'> | null {
@@ -443,6 +468,19 @@ const handler: Handler = async (event) => {
       if (!song) return err(400, '곡 데이터가 올바르지 않습니다.');
       try {
         await upsertSong(song);
+        return ok({ ok: true });
+      } catch (e) {
+        return err(500, (e as Error).message);
+      }
+    }
+
+    if (method === 'POST' && id && !action) {
+      // Update an existing song's editable fields (title / date / tags)
+      if (!checkPassword(String(body.password ?? ''))) return err(401, '권한 없음');
+      const patch = parseSongPatch(body.song);
+      if (!patch) return err(400, '곡 데이터가 올바르지 않습니다.');
+      try {
+        await updateSongFields(id, patch);
         return ok({ ok: true });
       } catch (e) {
         return err(500, (e as Error).message);

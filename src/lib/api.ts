@@ -94,6 +94,33 @@ export async function updateSongTags(
   });
 }
 
+export interface SongPatch {
+  title?: string;
+  publishedAt?: string;
+  active?: boolean;
+  tags?: Partial<Song['tags']>;
+}
+
+export async function updateSong(
+  id: string,
+  patch: SongPatch,
+  password: string,
+): Promise<void> {
+  if (DEMO) {
+    demoSongs = demoSongs.map(s =>
+      s.id === id
+        ? { ...s, ...patch, tags: patch.tags ? { ...s.tags, ...patch.tags } : s.tags }
+        : s,
+    );
+    saveDemoSongs();
+    return;
+  }
+  await apiFetch(`/songs/${encodeURIComponent(id)}`, {
+    method: 'POST',
+    body: JSON.stringify({ song: patch, password }),
+  });
+}
+
 export async function addSong(song: Song, password: string): Promise<void> {
   if (DEMO) {
     if (!demoSongs.find(s => s.id === song.id)) {

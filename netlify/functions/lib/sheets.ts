@@ -305,6 +305,52 @@ export async function updateSongTags(
   });
 }
 
+export interface SongFieldPatch {
+  title?: string;
+  publishedAt?: string;
+  active?: boolean;
+  tags?: Partial<Song['tags']>;
+}
+
+export async function updateSongFields(
+  songId: string,
+  patch: SongFieldPatch,
+): Promise<void> {
+  const { sheets, sheetId } = await getSheetContext();
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: 'songs!A:K',
+  });
+  const rows = res.data.values ?? [];
+  const rowIndex = rows.findIndex((r, i) => i > 0 && r[0] === songId);
+  if (rowIndex < 0) throw new Error('Song not found');
+
+  const existing = rows[rowIndex];
+  const tags = patch.tags ?? {};
+
+  const values = [[
+    cell(existing, 0),
+    patch.title ?? cell(existing, 1),
+    cell(existing, 2),
+    cell(existing, 3),
+    patch.publishedAt ?? cell(existing, 4),
+    patch.active !== undefined ? patch.active : booleanCell(existing, 5, true),
+    arrayToCsv(tags.theme ?? csvToArray(cell(existing, 6))),
+    tags.tempo ?? (cell(existing, 7) || 'mid'),
+    arrayToCsv(tags.mood ?? csvToArray(cell(existing, 8))),
+    tags.strings !== undefined ? tags.strings : booleanCell(existing, 9, false),
+    tags.difficulty ?? (cell(existing, 10) || 'mid'),
+  ]];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `songs!A${rowIndex + 1}:K${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  });
+}
+
 // --- Performances ---
 
 export async function getPerformances(songId?: string): Promise<PerformanceLog[]> {
