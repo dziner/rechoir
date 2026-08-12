@@ -10,10 +10,10 @@ import { youtubeIdFromUrl, thumbnailUrl, isValidYoutubeId, generateManualSongId 
 
 const BLANK_MANUAL_TAGS: SongTags = {
   theme: [],
-  tempo: 'mid',
+  tempo: '',
   mood: [],
-  strings: false,
-  difficulty: 'mid',
+  strings: null,
+  difficulty: '',
   auto: [],
 };
 
@@ -318,7 +318,7 @@ function ManualRecordPanel() {
       {!selectedId && titleQuery.trim() && (
         <div className="space-y-3 rounded-xl bg-gray-50 p-3">
           <p className="text-xs font-semibold text-gray-500">
-            새 곡입니다 — 태그를 선택해 주세요
+            새 곡입니다 — 태그를 선택해 주세요 (미설정 항목은 목록에 표시되지 않습니다)
           </p>
           <div>
             <p className="mb-1.5 text-xs font-semibold text-gray-500">주제</p>
@@ -351,7 +351,13 @@ function ManualRecordPanel() {
           <div className="flex flex-wrap gap-4">
             <div>
               <p className="mb-1 text-xs font-semibold text-gray-500">템포</p>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
+                <TagBadge
+                  label="미설정"
+                  variant="default"
+                  active={tags.tempo === ''}
+                  onClick={() => setTags({ ...tags, tempo: '' })}
+                />
                 {(['slow', 'mid', 'fast'] as Tempo[]).map(t => (
                   <TagBadge
                     key={t}
@@ -365,7 +371,13 @@ function ManualRecordPanel() {
             </div>
             <div>
               <p className="mb-1 text-xs font-semibold text-gray-500">난이도</p>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
+                <TagBadge
+                  label="미설정"
+                  variant="default"
+                  active={tags.difficulty === ''}
+                  onClick={() => setTags({ ...tags, difficulty: '' })}
+                />
                 {(['low', 'mid', 'high'] as Difficulty[]).map(d => (
                   <TagBadge
                     key={d}
@@ -379,7 +391,13 @@ function ManualRecordPanel() {
             </div>
             <div>
               <p className="mb-1 text-xs font-semibold text-gray-500">현악기 합주</p>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
+                <TagBadge
+                  label="미설정"
+                  variant="default"
+                  active={tags.strings === null}
+                  onClick={() => setTags({ ...tags, strings: null })}
+                />
                 {[true, false].map(v => (
                   <TagBadge
                     key={String(v)}

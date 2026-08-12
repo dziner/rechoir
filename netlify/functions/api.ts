@@ -66,7 +66,7 @@ function parseTagPatch(value: unknown): Partial<Song['tags']> | null {
     tags.theme = value.theme;
   }
   if ('tempo' in value) {
-    if (!['slow', 'mid', 'fast'].includes(String(value.tempo))) return null;
+    if (!['slow', 'mid', 'fast', ''].includes(String(value.tempo))) return null;
     tags.tempo = String(value.tempo);
   }
   if ('mood' in value) {
@@ -74,11 +74,11 @@ function parseTagPatch(value: unknown): Partial<Song['tags']> | null {
     tags.mood = value.mood;
   }
   if ('strings' in value) {
-    if (typeof value.strings !== 'boolean') return null;
+    if (typeof value.strings !== 'boolean' && value.strings !== null) return null;
     tags.strings = value.strings;
   }
   if ('difficulty' in value) {
-    if (!['low', 'mid', 'high'].includes(String(value.difficulty))) return null;
+    if (!['low', 'mid', 'high', ''].includes(String(value.difficulty))) return null;
     tags.difficulty = String(value.difficulty);
   }
   if ('auto' in value) {
@@ -91,8 +91,8 @@ function parseTagPatch(value: unknown): Partial<Song['tags']> | null {
 
 function parseSongTags(value: unknown): Song['tags'] | null {
   const patch = parseTagPatch(value);
-  if (!patch || !patch.theme || !patch.tempo || !patch.mood
-    || typeof patch.strings !== 'boolean' || !patch.difficulty) {
+  if (!patch || !patch.theme || patch.tempo === undefined || !patch.mood
+    || patch.strings === undefined || patch.difficulty === undefined) {
     return null;
   }
 
@@ -286,7 +286,7 @@ async function syncPlaylistIntoSheets(): Promise<PlaylistSyncResult> {
     const bestVideo = [...group].sort(comparePlaylistVideoRecency)[0];
     const existingCanonical = canonicalByKey.get(key);
     const baseTags = existingCanonical?.tags ?? {
-      theme: [], tempo: 'mid', mood: [], strings: false, difficulty: 'mid', auto: [],
+      theme: [], tempo: '', mood: [], strings: null, difficulty: '', auto: [],
     };
     const inferredTags = inferTagsFromMetadata({
       canonicalTitle: bestVideo.parsed.canonicalTitle,

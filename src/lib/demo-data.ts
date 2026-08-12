@@ -80,7 +80,7 @@ export const DEMO_SONGS: Song[] = [
     thumbnail: 'https://img.youtube.com/vi/tVj0ZTS4WF4/maxresdefault.jpg',
     publishedAt: '2023-07-02',
     active: true,
-    tags: { theme: ['맥추', '감사'], tempo: 'mid', mood: ['밝음', '감사'], strings: false, difficulty: 'low', auto: [] },
+    tags: { theme: ['맥추', '감사'], tempo: '', mood: [], strings: null, difficulty: '', auto: [] },
   },
   {
     id: 'xEe8V2C5zBs',
@@ -89,7 +89,7 @@ export const DEMO_SONGS: Song[] = [
     thumbnail: 'https://img.youtube.com/vi/xEe8V2C5zBs/maxresdefault.jpg',
     publishedAt: '2023-11-19',
     active: true,
-    tags: { theme: ['추수감사', '감사'], tempo: 'mid', mood: ['밝음'], strings: false, difficulty: 'low', auto: [] },
+    tags: { theme: ['추수감사', '감사'], tempo: '', mood: ['밝음'], strings: null, difficulty: '', auto: [] },
   },
   {
     id: 'pRpeEdMmmQ0',

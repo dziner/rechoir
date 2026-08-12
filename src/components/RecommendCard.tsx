@@ -108,9 +108,15 @@ export function RecommendCard({ song, rank }: RecommendCardProps) {
             {song.tags.mood.slice(0, 1).map(m => (
               <TagBadge key={m} label={m} variant="mood" />
             ))}
-            <TagBadge label={TEMPO_KO[song.tags.tempo]} variant="tempo" />
-            <TagBadge label={DIFFICULTY_KO[song.tags.difficulty]} variant="difficulty" />
-            {song.tags.strings && <TagBadge label="🎻 현악기" variant="strings" />}
+            {song.tags.tempo && (
+              <TagBadge label={TEMPO_KO[song.tags.tempo]} variant="tempo" />
+            )}
+            {song.tags.difficulty && (
+              <TagBadge label={DIFFICULTY_KO[song.tags.difficulty]} variant="difficulty" />
+            )}
+            {song.tags.strings === true && (
+              <TagBadge label="🎻 현악기" variant="strings" />
+            )}
             {song.tags.auto.map(a => (
               <TagBadge key={a} label={a} variant="auto" />
             ))}

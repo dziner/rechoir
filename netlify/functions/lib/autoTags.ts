@@ -12,10 +12,10 @@ type Pattern = string | RegExp;
 
 const DEFAULT_TAGS: RuleTags = {
   theme: [],
-  tempo: 'mid',
+  tempo: '',
   mood: [],
-  strings: false,
-  difficulty: 'mid',
+  strings: null,
+  difficulty: '',
   auto: [],
 };
 
@@ -83,12 +83,14 @@ export function inferTagsFromMetadata(input: AutoTagInput): RuleTags {
     ...input.descriptions,
   ].join(' '));
 
+  // A rule that does not fire is not evidence — it leaves the field unset so
+  // the UI can stay silent instead of asserting 보통/중/현악기 없음.
   return {
     theme: pickRuleTags(THEME_RULES, haystack),
-    tempo: pickRuleValue(TEMPO_RULES, haystack) ?? DEFAULT_TAGS.tempo,
+    tempo: pickRuleValue(TEMPO_RULES, haystack) ?? '',
     mood: pickRuleTags(MOOD_RULES, haystack),
-    strings: matchesAny(haystack, STRINGS_PATTERNS),
-    difficulty: pickRuleValue(DIFFICULTY_RULES, haystack) ?? DEFAULT_TAGS.difficulty,
+    strings: matchesAny(haystack, STRINGS_PATTERNS) ? true : null,
+    difficulty: pickRuleValue(DIFFICULTY_RULES, haystack) ?? '',
     auto: [],
   };
 }
@@ -96,14 +98,16 @@ export function inferTagsFromMetadata(input: AutoTagInput): RuleTags {
 export function mergeInferredTags(existing: RuleTags | undefined, inferred: RuleTags): RuleTags {
   const current = existing ?? DEFAULT_TAGS;
 
+  // An explicit choice always wins. 'mid' used to double as the "unset"
+  // sentinel here, which silently overwrote a deliberate 보통/중 on every sync.
   return {
     theme: current.theme.length > 0 ? current.theme : inferred.theme,
-    tempo: current.tempo && current.tempo !== 'mid' ? current.tempo : inferred.tempo,
+    tempo: current.tempo || inferred.tempo,
     mood: current.mood.length > 0 ? current.mood : inferred.mood,
-    strings: current.strings || inferred.strings,
-    difficulty: current.difficulty && current.difficulty !== 'mid'
-      ? current.difficulty
-      : inferred.difficulty,
+    strings: current.strings !== null && current.strings !== undefined
+      ? current.strings
+      : inferred.strings,
+    difficulty: current.difficulty || inferred.difficulty,
     auto: current.auto ?? [],
   };
 }

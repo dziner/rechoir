@@ -3,14 +3,28 @@ export type Difficulty = 'low' | 'mid' | 'high';
 export type ServiceType = '1부' | '2부';
 export type PerformanceType = 'new' | 'encore';
 
+/**
+ * Tempo/difficulty use '' and strings uses null to mean "nobody has set this".
+ * Previously an untouched song read back as 보통/중/없음, so guesses were shown
+ * next to real data and there was no way to tell them apart.
+ */
 export interface SongTags {
   theme: string[];
-  tempo: Tempo;
+  tempo: Tempo | '';
   mood: string[];
-  strings: boolean;
-  difficulty: Difficulty;
+  strings: boolean | null;
+  difficulty: Difficulty | '';
   auto: string[];
 }
+
+export const UNSET_TAGS: SongTags = {
+  theme: [],
+  tempo: '',
+  mood: [],
+  strings: null,
+  difficulty: '',
+  auto: [],
+};
 
 export interface Song {
   id: string;

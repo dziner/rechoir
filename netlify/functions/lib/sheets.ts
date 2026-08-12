@@ -9,10 +9,12 @@ export interface Song {
   publishedAt: string;
   active: boolean;
   tags: {
+    // '' (tempo/difficulty) and null (strings) mean "not set by anyone yet",
+    // kept distinct from a real choice so the UI can hide guesses.
     theme: string[];
     tempo: string;
     mood: string[];
-    strings: boolean;
+    strings: boolean | null;
     difficulty: string;
     auto: string[];
   };
@@ -194,6 +196,18 @@ function cell(row: unknown[], index: number): string {
   return String(row[index] ?? '');
 }
 
+function optionalBooleanCell(row: unknown[], index: number): boolean | null {
+  const value = row[index];
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value ?? '').trim().toUpperCase();
+  if (!normalized) return null;
+  return normalized === 'TRUE';
+}
+
+function booleanCellToSheet(value: boolean | null | undefined): string | boolean {
+  return value === null || value === undefined ? '' : value;
+}
+
 function booleanCell(row: unknown[], index: number, defaultValue: boolean): boolean {
   const value = row[index];
   if (typeof value === 'boolean') return value;
@@ -216,10 +230,10 @@ function rowsToSongs(rows: unknown[][]): Song[] {
       active: booleanCell(r, 5, true),
       tags: {
         theme: csvToArray(cell(r, 6)),
-        tempo: cell(r, 7) || 'mid',
+        tempo: cell(r, 7),
         mood: csvToArray(cell(r, 8)),
-        strings: booleanCell(r, 9, false),
-        difficulty: cell(r, 10) || 'mid',
+        strings: optionalBooleanCell(r, 9),
+        difficulty: cell(r, 10),
         auto: [],
       },
     }));
@@ -257,7 +271,7 @@ export async function upsertSong(song: Song): Promise<void> {
     arrayToCsv(song.tags.theme),
     song.tags.tempo,
     arrayToCsv(song.tags.mood),
-    song.tags.strings,
+    booleanCellToSheet(song.tags.strings),
     song.tags.difficulty,
   ]];
 
@@ -286,10 +300,10 @@ export async function updateSongTags(
   const existingRow = rows[rowIndex];
   const merged = {
     theme: tags.theme ?? csvToArray(cell(existingRow, 6)),
-    tempo: tags.tempo ?? (cell(existingRow, 7) || 'mid'),
+    tempo: tags.tempo ?? cell(existingRow, 7),
     mood: tags.mood ?? csvToArray(cell(existingRow, 8)),
-    strings: tags.strings !== undefined ? tags.strings : booleanCell(existingRow, 9, false),
-    difficulty: tags.difficulty ?? (cell(existingRow, 10) || 'mid'),
+    strings: tags.strings !== undefined ? tags.strings : optionalBooleanCell(existingRow, 9),
+    difficulty: tags.difficulty ?? cell(existingRow, 10),
   };
 
   await sheets.spreadsheets.values.update({
@@ -301,7 +315,7 @@ export async function updateSongTags(
         arrayToCsv(merged.theme),
         merged.tempo,
         arrayToCsv(merged.mood),
-        merged.strings,
+        booleanCellToSheet(merged.strings),
         merged.difficulty,
       ]],
     },
@@ -340,10 +354,12 @@ export async function updateSongFields(
     patch.publishedAt ?? cell(existing, 4),
     patch.active !== undefined ? patch.active : booleanCell(existing, 5, true),
     arrayToCsv(tags.theme ?? csvToArray(cell(existing, 6))),
-    tags.tempo ?? (cell(existing, 7) || 'mid'),
+    tags.tempo ?? cell(existing, 7),
     arrayToCsv(tags.mood ?? csvToArray(cell(existing, 8))),
-    tags.strings !== undefined ? tags.strings : booleanCell(existing, 9, false),
-    tags.difficulty ?? (cell(existing, 10) || 'mid'),
+    booleanCellToSheet(
+      tags.strings !== undefined ? tags.strings : optionalBooleanCell(existing, 9),
+    ),
+    tags.difficulty ?? cell(existing, 10),
   ]];
 
   await sheets.spreadsheets.values.update({

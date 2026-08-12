@@ -285,10 +285,20 @@ export function SongDetail() {
                 ))}
               </div>
             </div>
+            <p className="text-xs text-gray-400">
+              설정하지 않은 항목은 목록에 표시되지 않습니다.
+            </p>
             <div className="flex flex-wrap gap-4">
               <div>
                 <p className="mb-1 text-xs font-semibold text-gray-500">템포</p>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
+                  <TagBadge
+                    label="미설정"
+                    variant="default"
+                    size="md"
+                    active={draft.tags.tempo === ''}
+                    onClick={() => setDraft({ ...draft, tags: { ...draft.tags, tempo: '' } })}
+                  />
                   {(['slow', 'mid', 'fast'] as Tempo[]).map(t => (
                     <TagBadge
                       key={t}
@@ -303,7 +313,14 @@ export function SongDetail() {
               </div>
               <div>
                 <p className="mb-1 text-xs font-semibold text-gray-500">난이도</p>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
+                  <TagBadge
+                    label="미설정"
+                    variant="default"
+                    size="md"
+                    active={draft.tags.difficulty === ''}
+                    onClick={() => setDraft({ ...draft, tags: { ...draft.tags, difficulty: '' } })}
+                  />
                   {(['low', 'mid', 'high'] as Difficulty[]).map(d => (
                     <TagBadge
                       key={d}
@@ -318,7 +335,14 @@ export function SongDetail() {
               </div>
               <div>
                 <p className="mb-1 text-xs font-semibold text-gray-500">현악기 합주</p>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
+                  <TagBadge
+                    label="미설정"
+                    variant="default"
+                    size="md"
+                    active={draft.tags.strings === null}
+                    onClick={() => setDraft({ ...draft, tags: { ...draft.tags, strings: null } })}
+                  />
                   {[true, false].map(v => (
                     <TagBadge
                       key={String(v)}
@@ -337,9 +361,15 @@ export function SongDetail() {
           <div className="flex flex-wrap gap-1.5">
             {view.tags.theme.map(t => <TagBadge key={t} label={t} variant="theme" size="md" />)}
             {view.tags.mood.map(m => <TagBadge key={m} label={m} variant="mood" size="md" />)}
-            <TagBadge label={TEMPO_KO[view.tags.tempo]} variant="tempo" size="md" />
-            <TagBadge label={DIFFICULTY_KO[view.tags.difficulty]} variant="difficulty" size="md" />
-            {view.tags.strings && <TagBadge label="🎻 현악기" variant="strings" size="md" />}
+            {view.tags.tempo && (
+              <TagBadge label={TEMPO_KO[view.tags.tempo]} variant="tempo" size="md" />
+            )}
+            {view.tags.difficulty && (
+              <TagBadge label={DIFFICULTY_KO[view.tags.difficulty]} variant="difficulty" size="md" />
+            )}
+            {view.tags.strings === true && (
+              <TagBadge label="🎻 현악기" variant="strings" size="md" />
+            )}
             {view.tags.auto.map(a => <TagBadge key={a} label={a} variant="auto" size="md" />)}
           </div>
         )}

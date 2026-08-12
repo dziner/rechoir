@@ -60,9 +60,11 @@ export function SongCard({ song }: SongCardProps) {
           {tags.theme.slice(0, 2).map(t => (
             <TagBadge key={t} label={t} variant="theme" />
           ))}
-          <TagBadge label={TEMPO_KO[tags.tempo]} variant="tempo" />
-          <TagBadge label={DIFFICULTY_KO[tags.difficulty]} variant="difficulty" />
-          {tags.strings && <TagBadge label="🎻 현악기" variant="strings" />}
+          {tags.tempo && <TagBadge label={TEMPO_KO[tags.tempo]} variant="tempo" />}
+          {tags.difficulty && (
+            <TagBadge label={DIFFICULTY_KO[tags.difficulty]} variant="difficulty" />
+          )}
+          {tags.strings === true && <TagBadge label="🎻 현악기" variant="strings" />}
           {tags.auto.map(a => (
             <TagBadge key={a} label={a} variant="auto" />
           ))}

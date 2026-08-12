@@ -23,14 +23,16 @@ function calcThemeFit(
   return hasTheme ? themeScore : moodScore;
 }
 
-function readinessScore(difficulty: Difficulty): number {
+// An unset difficulty is treated as the neutral middle rather than assumed
+// easy or hard, so unrated songs are neither boosted nor buried.
+function readinessScore(difficulty: Difficulty | ''): number {
   const map: Record<Difficulty, number> = { low: 1, mid: 0.5, high: 0 };
-  return map[difficulty];
+  return difficulty ? map[difficulty] : 0.5;
 }
 
-function difficultyRank(difficulty: Difficulty): number {
+function difficultyRank(difficulty: Difficulty | ''): number {
   const map: Record<Difficulty, number> = { low: 0, mid: 1, high: 2 };
-  return map[difficulty];
+  return difficulty ? map[difficulty] : 1;
 }
 
 function compareRecommendedSongs(a: RecommendedSong, b: RecommendedSong): number {
@@ -82,8 +84,8 @@ function reasonText(
     reasons.push(`주제 ${tags.theme.slice(0, 3).join('·')}`);
   }
 
-  reasons.push(`난이도 *${DIFFICULTY_KO[tags.difficulty]}*`);
-  if (tags.strings) reasons.push('현악기 합주');
+  if (tags.difficulty) reasons.push(`난이도 *${DIFFICULTY_KO[tags.difficulty]}*`);
+  if (tags.strings === true) reasons.push('현악기 합주');
   if (tags.auto.includes('2부성가대')) reasons.push('`2부성가대`');
 
   return reasons;
